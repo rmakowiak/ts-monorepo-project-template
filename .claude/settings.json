@@ -6,5 +6,26 @@
     "typescript-lsp@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm style:format -- {{file}} 2>/dev/null || true",
+            "statusMessage": "Formatting with Prettier...",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "pnpm lint 2>/dev/null || true",
+            "statusMessage": "Running ESLint...",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
   }
 }

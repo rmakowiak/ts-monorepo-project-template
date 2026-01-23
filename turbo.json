@@ -1,0 +1,45 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "inputs": ["$TURBO_DEFAULT$"]
+    },
+    "style:format": {
+      "dependsOn": ["^style:format"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "cache": false
+    },
+    "style:format:root": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "cache": false
+    },
+    "style:lint": {
+      "dependsOn": ["^style:lint"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "cache": false
+    },
+    "style:lint:root": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$"]
+    },
+    "release": {
+      "dependsOn": ["^release"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

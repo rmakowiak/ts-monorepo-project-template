@@ -1,0 +1,20 @@
+services:
+  example-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: example-service
+    container_name: example-service
+    read_only: true
+    ports:
+      - '8001:8000'
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+    tmpfs:
+      - /tmp
+
+volumes:
+  redis-data:
+
+name: monorepo-template

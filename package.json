@@ -1,0 +1,39 @@
+{
+  "name": "monorepo-template",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "style:format:root": "prettier --write",
+    "style:format": "turbo run style:format:root style:format --",
+    "style:lint:root": "prettier --check",
+    "style:lint": "turbo run style:lint:root style:lint --",
+    "test": "turbo run test",
+    "release": "turbo release --concurrency=1",
+    "prepare": "npx husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "20.1.0",
+    "@commitlint/config-conventional": "20.0.0",
+    "@monorepo/prettier-config": "workspace:*",
+    "turbo": "2.5.8",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=18"
+  },
+  "pnpm": {
+    "overrides": {
+      "js-yaml": ">=4.1.1"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,tsx,md,js,mjs,yaml,yml}": [
+      "pnpm lint --",
+      "pnpm style:format --"
+    ]
+  }
+}

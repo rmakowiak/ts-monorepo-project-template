@@ -1,0 +1,43 @@
+{
+  "name": "@monorepo/example-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "eslint .",
+    "style:format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "style:lint": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "5.2.1"
+  },
+  "devDependencies": {
+    "@monorepo/eslint-config": "workspace:*",
+    "@monorepo/prettier-config": "workspace:*",
+    "@types/express": "5.0.0",
+    "@types/jest": "30.0.0",
+    "@types/node": "22.18.10",
+    "eslint": "9.37.0",
+    "jest": "30.2.0",
+    "prettier": "3.6.2",
+    "ts-jest": "29.4.5",
+    "tsx": "4.19.2",
+    "typescript": "5.9.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/src"],
+    "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.ts",
+      "!src/**/*.spec.ts"
+    ]
+  }
+}

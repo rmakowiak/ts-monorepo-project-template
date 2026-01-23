@@ -1,0 +1,14 @@
+{
+  "name": "@monorepo/release-it-config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./index.js"
+  },
+  "devDependencies": {
+    "@release-it/bumper": "7.0.5",
+    "@release-it/conventional-changelog": "10.0.1",
+    "release-it": "19.0.5",
+    "release-it-pnpm": "4.6.6"
+  }
+}

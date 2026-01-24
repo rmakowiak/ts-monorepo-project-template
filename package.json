@@ -19,6 +19,7 @@
     "@commitlint/config-conventional": "20.0.0",
     "@monorepo/prettier-config": "workspace:*",
     "husky": "^9.1.7",
+    "jsonwebtoken": "^9.0.2",
     "lint-staged": "^16.2.7",
     "turbo": "2.5.8",
     "typescript": "5.9.3"

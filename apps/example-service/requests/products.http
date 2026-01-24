@@ -1,0 +1,147 @@
+### Get all products (with pagination)
+# Requires: JWT token (any authenticated user)
+# Returns: List of products with pagination
+GET {{baseUrl}}/products?limit=10&offset=0
+Authorization: Bearer {{userToken}}
+
+###
+
+### Create a new product
+# Requires: JWT token with admin role
+# Returns: Created product with ID
+POST {{baseUrl}}/products
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Wireless Mouse",
+  "description": "Ergonomic wireless mouse with 2.4GHz connectivity",
+  "sku": "MOUSE-001",
+  "price": 29.99,
+  "stock": 100
+}
+
+###
+
+### Create a product with minimum price (boundary test)
+# Requires: JWT token with admin role
+POST {{baseUrl}}/products
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Budget Item",
+  "description": "Minimum price test product",
+  "sku": "BUDGET-001",
+  "price": 0.01,
+  "stock": 1
+}
+
+###
+
+### Get product by ID
+# Requires: JWT token (any authenticated user)
+# Replace {{productId}} in http-client.env.json with actual ID
+GET {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{userToken}}
+
+###
+
+### Update product
+# Requires: JWT token with admin role
+# Partial update - only provided fields will be updated
+PATCH {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "price": 24.99,
+  "stock": 150
+}
+
+###
+
+### Update product name and description
+# Requires: JWT token with admin role
+PATCH {{baseUrl}}/products/{{productId}}
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Wireless Mouse Pro",
+  "description": "Premium ergonomic wireless mouse with advanced features"
+}
+
+###
+
+### Delete product
+# Requires: JWT token with admin role
+DELETE {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Error case: Create product without auth (should fail with 401)
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Product",
+  "description": "This should fail",
+  "sku": "UNAUTH-001",
+  "price": 10.00,
+  "stock": 1
+}
+
+###
+
+### Error case: Create product with user token (should fail with 403)
+# Users can view products but cannot create them
+POST {{baseUrl}}/products
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "name": "Forbidden Product",
+  "description": "User role cannot create products",
+  "sku": "FORBID-001",
+  "price": 10.00,
+  "stock": 1
+}
+
+###
+
+### Error case: Invalid price (should fail with 400)
+POST {{baseUrl}}/products
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Invalid Product",
+  "description": "Negative price test",
+  "sku": "INVALID-001",
+  "price": -1,
+  "stock": 10
+}
+
+###
+
+### Error case: Duplicate SKU (should fail with 409)
+# First create a product, then try to create another with same SKU
+POST {{baseUrl}}/products
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Duplicate Test",
+  "description": "Testing duplicate SKU",
+  "sku": "MOUSE-001",
+  "price": 29.99,
+  "stock": 50
+}
+
+###
+
+### Get product that doesn't exist (should fail with 404)
+GET {{baseUrl}}/products/non-existent-id-12345
+Authorization: Bearer {{userToken}}

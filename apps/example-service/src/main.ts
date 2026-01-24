@@ -3,7 +3,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { Logger } from "nestjs-pino";
 import { AppModule } from "./app.module";
-import type { AppConfig } from "./shared/config/app.config";
+import { AppConfigService } from "./shared/config/app-config.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -12,7 +12,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
 
   // Get configuration
-  const config = app.get<AppConfig>("AppConfig");
+  const config = app.get(AppConfigService);
 
   // Enable CORS
   app.enableCors({
@@ -64,13 +64,15 @@ async function bootstrap() {
   // Enable graceful shutdown
   app.enableShutdownHooks();
 
-  await app.listen(config.port, "0.0.0.0");
+  await app.listen(config.app.PORT, "0.0.0.0");
 
   const logger = app.get(Logger);
-  logger.log(`🚀 Application running on: http://localhost:${config.port}`);
-  logger.log(`📚 Swagger documentation: http://localhost:${config.port}/api`);
-  logger.log(`💚 Health check: http://localhost:${config.port}/health`);
-  logger.log(`🌍 Environment: ${config.nodeEnv}`);
+  logger.log(`🚀 Application running on: http://localhost:${config.app.PORT}`);
+  logger.log(
+    `📚 Swagger documentation: http://localhost:${config.app.PORT}/api`,
+  );
+  logger.log(`💚 Health check: http://localhost:${config.app.PORT}/health`);
+  logger.log(`🌍 Environment: ${config.app.NODE_ENV}`);
 }
 
 bootstrap();

@@ -1,0 +1,42 @@
+### JWT Token Generation Instructions
+
+# This service uses JWT tokens for authentication.
+# There is no /login endpoint - tokens must be generated manually.
+
+# STEP 1: Generate Admin Token
+# Run this command in your terminal:
+# node -e "console.log(require('jsonwebtoken').sign({sub:'admin-user-123',email:'admin@example.com',name:'Admin User',roles:['admin','user']}, 'dev-secret-change-in-production-at-least-32-chars', {expiresIn:'24h'}))"
+
+# STEP 2: Generate User Token
+# Run this command in your terminal:
+# node -e "console.log(require('jsonwebtoken').sign({sub:'user-456',email:'user@example.com',name:'Regular User',roles:['user']}, 'dev-secret-change-in-production-at-least-32-chars', {expiresIn:'24h'}))"
+
+# STEP 3: Copy tokens to http-client.env.json
+# 1. Copy http-client.env.json.example to http-client.env.json
+# 2. Replace the placeholder tokens with your generated tokens
+# 3. Save the file
+
+# Token Payload Structure:
+# {
+#   "sub": "user-id",           // User ID (string)
+#   "email": "user@example.com", // User email
+#   "name": "User Name",         // User display name
+#   "roles": ["admin", "user"]   // User roles (admin requires both admin and user)
+# }
+
+# JWT Secret (default for development):
+# dev-secret-change-in-production-at-least-32-chars
+# (This must match JWT_SECRET in your .env file)
+
+# Token Expiration:
+# Default: 24h (can be changed in the generation command)
+
+### Example: Test admin token validation
+# Uncomment and replace YOUR_ADMIN_TOKEN_HERE to test
+# GET {{baseUrl}}/products
+# Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+### Example: Test user token validation
+# Uncomment and replace YOUR_USER_TOKEN_HERE to test
+# GET {{baseUrl}}/products
+# Authorization: Bearer YOUR_USER_TOKEN_HERE

@@ -139,10 +139,12 @@ describe("loadConfig", () => {
       expect(() => loadConfig()).toThrow(/PORT must not be less than 1/);
     });
 
-    it("should reject non-numeric PORT", () => {
+    it("should reject non-numeric PORT and show actual value", () => {
       process.env.PORT = "abc";
 
       expect(() => loadConfig()).toThrow(/PORT must be a valid number/);
+      expect(() => loadConfig()).toThrow(/not "abc"/);
+      expect(() => loadConfig()).toThrow(/Please provide a numeric port/);
     });
 
     it("should reject PORT with decimals", () => {

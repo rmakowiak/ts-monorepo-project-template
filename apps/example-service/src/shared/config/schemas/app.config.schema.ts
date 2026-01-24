@@ -31,8 +31,9 @@ export class AppConfigSchema {
    * HTTP server port
    * @default 8000
    */
-  @Transform(({ value }) => {
-    const originalValue = value;
+  @Transform(({ value, obj }) => {
+    // Get the original string value from the source object before any conversion
+    const originalValue = obj.PORT;
 
     if (value === undefined || value === null) {
       throw new Error(
@@ -56,8 +57,11 @@ export class AppConfigSchema {
 
     const parsed = parseInt(valueStr, 10);
     if (isNaN(parsed)) {
+      // Show the original value from the source object to avoid showing "NaN"
+      const displayValue =
+        originalValue !== undefined ? originalValue : valueStr;
       throw new Error(
-        `PORT must be a valid number. Got: "${originalValue}". Example: PORT=8000`,
+        `PORT must be a valid number, not "${displayValue}". Please provide a numeric port (e.g., PORT=8000)`,
       );
     }
 

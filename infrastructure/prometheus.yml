@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'local-dev'
+    environment: 'development'
+
+scrape_configs:
+  # Example Service - NestJS application with OpenTelemetry metrics
+  - job_name: 'example-service'
+    metrics_path: '/metrics'
+    static_configs:
+      # Use host.docker.internal to reach host machine from Docker on Mac/Windows
+      # For Linux, use 172.17.0.1 or the host IP
+      - targets: ['host.docker.internal:9464']
+        labels:
+          service: 'example-service'
+          app: 'monorepo'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'

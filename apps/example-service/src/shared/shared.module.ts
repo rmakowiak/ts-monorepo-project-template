@@ -1,6 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { LoggerModule } from "nestjs-pino";
+import { createPinoOtelMixin } from "@monorepo/otel";
 import { loadConfig } from "./config/config.loader";
 import { AppConfigService } from "./config/app-config.service";
 import type { ValidatedConfig } from "./config/config.loader";
@@ -24,6 +25,7 @@ import { Environment } from "./config/schemas/app.config.schema";
         return {
           pinoHttp: {
             level: logLevel,
+            mixin: createPinoOtelMixin(),
             transport:
               nodeEnv !== Environment.Production
                 ? {

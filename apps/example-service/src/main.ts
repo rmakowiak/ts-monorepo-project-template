@@ -2,10 +2,16 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { Logger } from "nestjs-pino";
+import { OtelSDKManager, loadOtelConfig } from "@monorepo/otel";
 import { AppModule } from "./app.module";
 import { AppConfigService } from "./shared/config/app-config.service";
 
 async function bootstrap() {
+  // Initialize OpenTelemetry BEFORE creating the NestJS app
+  // This ensures all modules and HTTP requests are auto-instrumented
+  const otel = new OtelSDKManager(loadOtelConfig());
+  otel.initialize();
+
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   // Use Pino logger

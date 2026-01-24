@@ -681,6 +681,47 @@ Only export what other modules need:
 export class ProductModule {}
 ```
 
+### 6. Environment Variable Validation
+
+**✅ Good**: Always add new environment variables to config schemas
+
+```typescript
+// src/shared/config/schemas/app.config.schema.ts
+export class AppConfigSchema {
+  @IsUrl({ require_tld: false })
+  DATABASE_URL!: string;
+}
+
+// Then use via config service
+const dbUrl = this.config.app.DATABASE_URL;  // Type-safe, validated
+```
+
+**❌ Bad**: Don't read environment variables directly
+
+```typescript
+// Bad - no validation, not type-safe
+const dbUrl = process.env.DATABASE_URL;
+
+// Bad - bypasses config validation
+const port = parseInt(process.env.PORT || '8000', 10);
+```
+
+**Why?**
+- Type safety and IntelliSense
+- Validation on startup (fails fast)
+- Centralized configuration management
+- Immutability (config can't be changed at runtime)
+- Documentation in one place
+
+**Steps to add new environment variables:**
+1. Add to appropriate schema in `src/shared/config/schemas/[namespace].config.schema.ts`
+2. Add validation decorators (`@IsString()`, `@IsNumber()`, `@IsUrl()`, etc.)
+3. Add to `loadConfig()` in `config.loader.ts`
+4. Update `.env.example`
+5. Update `CONFIG.md`
+
+See [Configuration](#configuration) section and `CONFIG.md` for details.
+
 ---
 
 ## Testing
@@ -1318,6 +1359,7 @@ Configuration uses `@nestjs/config` with class-validator for type-safe validatio
 
 - `app` - Application settings (PORT, NODE_ENV, LOG_LEVEL)
 - `auth` - Authentication settings (JWT_SECRET)
+- `otel` - OpenTelemetry settings (service name, tracing, metrics)
 
 **Environment Files** (priority order):
 
@@ -1340,11 +1382,16 @@ export class SomeService {
     const port = this.config.app.PORT; // Type: number
     const env = this.config.app.NODE_ENV; // Type: Environment
     const secret = this.config.auth.JWT_SECRET; // Type: string
+    const serviceName = this.config.otel.OTEL_SERVICE_NAME; // Type: string
   }
 }
 ```
 
 ### Adding New Config
+
+**IMPORTANT**: All environment variables MUST be validated through config schemas. Never read `process.env` directly in services.
+
+**Steps**:
 
 1. Add property to schema in `src/shared/config/schemas/[namespace].config.schema.ts`
 2. Add validation decorators (`@IsString()`, `@IsNumber()`, etc.)
@@ -1362,6 +1409,9 @@ export class AppConfigSchema {
   @IsUrl({ require_tld: false })
   DATABASE_URL!: string;
 }
+
+// Then use in services:
+const dbUrl = this.config.app.DATABASE_URL;  // ✅ Validated & type-safe
 ```
 
 For complete documentation including validation rules, environment file priority, production deployment, and troubleshooting, see **[CONFIG.md](./CONFIG.md)**.

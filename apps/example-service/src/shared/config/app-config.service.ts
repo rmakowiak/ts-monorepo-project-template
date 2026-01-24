@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AppConfigSchema } from "./schemas/app.config.schema";
 import type { AuthConfigSchema } from "./schemas/auth.config.schema";
+import type { OtelConfigSchema } from "./schemas/otel.config.schema";
 import type { ValidatedConfig } from "./config.loader";
 
 /**
@@ -49,12 +50,21 @@ export class AppConfigService {
   }
 
   /**
+   * OpenTelemetry configuration namespace
+   * Contains: OTEL_SERVICE_NAME, OTEL_ENABLED, OTEL_TRACING_ENABLED, etc.
+   */
+  get otel(): OtelConfigSchema {
+    return this.configService.get("otel", { infer: true });
+  }
+
+  /**
    * Get entire configuration object (for debugging)
    */
   get all(): ValidatedConfig {
     return {
       app: this.app,
       auth: this.auth,
+      otel: this.otel,
     };
   }
 }

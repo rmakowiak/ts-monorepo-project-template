@@ -32,6 +32,23 @@ pnpm build && pnpm start
 | ------------ | ------ | --------------------------------------------------- | --------------------------------- |
 | `JWT_SECRET` | string | `dev-secret-change-in-production-at-least-32-chars` | JWT signing secret (min 32 chars) |
 
+### OpenTelemetry Config (`otel` namespace)
+
+| Variable                            | Type    | Default                                       | Description                               |
+| ----------------------------------- | ------- | --------------------------------------------- | ----------------------------------------- |
+| `OTEL_SERVICE_NAME`                 | string  | `example-service`                             | Service name for traces and metrics       |
+| `OTEL_SERVICE_VERSION`              | string  | `1.0.0`                                       | Service version                           |
+| `OTEL_ENABLED`                      | boolean | `true`                                        | Enable/disable OpenTelemetry              |
+| `OTEL_TRACING_ENABLED`              | boolean | `true`                                        | Enable/disable distributed tracing        |
+| `OTEL_TRACE_EXPORTER`               | enum    | `otlp-http`                                   | Exporter type: `otlp-http`, `console`     |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`| url     | `http://localhost:4318/v1/traces`             | OTLP trace receiver endpoint              |
+| `OTEL_TRACE_SAMPLE_RATE`            | number  | `1.0`                                         | Sampling rate (0.0-1.0)                   |
+| `OTEL_METRICS_ENABLED`              | boolean | `true`                                        | Enable/disable metrics collection         |
+| `OTEL_METRICS_PORT`                 | integer | `9464`                                        | Prometheus metrics port (1-65535)         |
+| `OTEL_RESOURCE_ATTRIBUTES`          | string  | -                                             | Custom attributes (comma-separated)       |
+
+See [OBSERVABILITY.md](../../OBSERVABILITY.md) for complete OpenTelemetry documentation.
+
 ## Environment File Priority
 
 Files loaded in order (later overrides earlier):
@@ -69,9 +86,17 @@ export class MyService {
   constructor(private readonly config: AppConfigService) {}
 
   doSomething() {
+    // Application config
     const port = this.config.app.PORT; // number
     const env = this.config.app.NODE_ENV; // Environment enum
+
+    // Authentication config
     const secret = this.config.auth.JWT_SECRET; // string
+
+    // OpenTelemetry config
+    const serviceName = this.config.otel.OTEL_SERVICE_NAME; // string
+    const tracingEnabled = this.config.otel.OTEL_TRACING_ENABLED; // boolean
+    const metricsPort = this.config.otel.OTEL_METRICS_PORT; // number
   }
 }
 ```
@@ -148,6 +173,8 @@ pnpm build && pnpm start
 **Mock config in tests**:
 
 ```typescript
+import { TraceExporterType } from "~/shared/config/schemas/otel.config.schema";
+
 const mockConfig: AppConfigService = {
   app: {
     PORT: 8000,
@@ -156,6 +183,16 @@ const mockConfig: AppConfigService = {
   },
   auth: {
     JWT_SECRET: "test-secret-at-least-32-characters-long",
+  },
+  otel: {
+    OTEL_SERVICE_NAME: "test-service",
+    OTEL_SERVICE_VERSION: "1.0.0",
+    OTEL_ENABLED: false,
+    OTEL_TRACING_ENABLED: false,
+    OTEL_TRACE_EXPORTER: TraceExporterType.Console,
+    OTEL_TRACE_SAMPLE_RATE: 1.0,
+    OTEL_METRICS_ENABLED: false,
+    OTEL_METRICS_PORT: 9464,
   },
 } as AppConfigService;
 ```

@@ -15,13 +15,24 @@ export interface TestTokenPayload {
 /**
  * Generate a valid JWT token for testing
  * @param payload - Partial token payload (missing fields will use defaults)
- * @param secret - JWT secret (defaults to dev secret from config.constants)
+ * @param secret - JWT secret (defaults to DEFAULT_JWT_SECRET for consistency)
  * @returns Signed JWT token string
+ *
+ * NOTE: Uses DEFAULT_JWT_SECRET for test consistency. If you need to test
+ * with a specific secret, pass it explicitly as the second parameter.
  */
 export function createTestToken(
   payload?: Partial<TestTokenPayload>,
-  secret: string = process.env.JWT_SECRET || DEFAULT_JWT_SECRET,
+  secret: string = DEFAULT_JWT_SECRET,
 ): string {
+  // Validate that the secret meets minimum requirements
+  if (secret.length < 32) {
+    throw new Error(
+      `Test JWT secret must be at least 32 characters. Got ${secret.length} characters. ` +
+        `Use DEFAULT_JWT_SECRET or generate with: openssl rand -base64 32`,
+    );
+  }
+
   const fullPayload: TestTokenPayload = {
     sub: payload?.sub || "test-user-id",
     email: payload?.email || "test@example.com",

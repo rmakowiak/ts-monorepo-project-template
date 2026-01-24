@@ -33,13 +33,18 @@ function validateConfig<T extends object>(config: T, schemaName: string): T {
         const constraints = error.constraints
           ? Object.values(error.constraints).join(", ")
           : "Unknown error";
-        return `  - ${error.property}: ${constraints}`;
+        const actualValue =
+          error.value !== undefined
+            ? ` (received: ${JSON.stringify(error.value)})`
+            : "";
+        return `  - ${error.property}: ${constraints}${actualValue}`;
       })
       .join("\n");
 
     throw new Error(
       `❌ Configuration validation failed for ${schemaName}:\n${messages}\n\n` +
-        `Please check your .env file or environment variables.`,
+        `Please check your .env file or environment variables.\n` +
+        `Environment file priority: .env.local > .env.production > .env`,
     );
   }
 
@@ -55,9 +60,22 @@ function loadAndValidateSchema<T extends object>(
   envData: Record<string, any>,
   schemaName: string,
 ): T {
-  const config = plainToInstance(schemaClass, envData, {
-    enableImplicitConversion: true,
-  });
+  let config: T;
+
+  try {
+    config = plainToInstance(schemaClass, envData, {
+      enableImplicitConversion: true,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `❌ Failed to transform ${schemaName} configuration:\n` +
+        `  ${errorMessage}\n\n` +
+        `This is likely due to invalid @Transform decorators or malformed environment values.\n` +
+        `Environment data provided: ${JSON.stringify(envData, null, 2)}`,
+    );
+  }
+
   return validateConfig(config, schemaName);
 }
 
@@ -65,7 +83,7 @@ function loadAndValidateSchema<T extends object>(
  * Load and validate all configuration from environment variables
  * This function is called by @nestjs/config during app initialization
  *
- * Environment file priority: .env.local > .env.production > .env
+ * See CONFIG.md for environment file priority details
  */
 export function loadConfig(): ValidatedConfig {
   const appConfig = loadAndValidateSchema(
@@ -86,8 +104,42 @@ export function loadConfig(): ValidatedConfig {
     "AuthConfig",
   );
 
-  return {
-    app: appConfig,
-    auth: authConfig,
-  };
+  // Log loaded configuration (excluding secrets) in non-test environments
+  if (process.env.NODE_ENV !== "test") {
+    const configSummary = {
+      app: {
+        PORT: appConfig.PORT,
+        NODE_ENV: appConfig.NODE_ENV,
+        LOG_LEVEL: appConfig.LOG_LEVEL,
+      },
+      auth: {
+        JWT_SECRET:
+          authConfig.JWT_SECRET === DEFAULT_JWT_SECRET
+            ? "<using DEFAULT_JWT_SECRET>"
+            : "<custom secret set>",
+      },
+    };
+    console.log(
+      "[Config] Loaded configuration:",
+      JSON.stringify(configSummary, null, 2),
+    );
+  }
+
+  // Warn if using default JWT secret in non-development environments
+  if (
+    authConfig.JWT_SECRET === DEFAULT_JWT_SECRET &&
+    appConfig.NODE_ENV !== Environment.Development &&
+    appConfig.NODE_ENV !== Environment.Test
+  ) {
+    console.warn(
+      "⚠️  WARNING: Using DEFAULT_JWT_SECRET in production! " +
+        "Generate a secure secret with: openssl rand -base64 32",
+    );
+  }
+
+  // Freeze config objects to prevent mutation
+  return Object.freeze({
+    app: Object.freeze(appConfig),
+    auth: Object.freeze(authConfig),
+  });
 }

@@ -8,12 +8,12 @@ export class AuthConfigSchema {
   /**
    * JWT signing secret
    * Must be at least 32 characters for security
-   * @default 'dev-secret-change-in-production' (development only)
+   * @default DEFAULT_JWT_SECRET from config.constants.ts (development only)
    */
   @IsString()
   @MinLength(32, {
     message:
       "JWT_SECRET must be at least 32 characters for security. Generate with: openssl rand -base64 32",
   })
-  JWT_SECRET!: string;
+  readonly JWT_SECRET!: string;
 }

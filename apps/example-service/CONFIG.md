@@ -167,7 +167,7 @@ Authentication and security configuration.
 - **Description**: Secret key for JWT token signing
 - **Type**: String
 - **Minimum Length**: 32 characters (production requirement)
-- **Default**: `dev-secret-change-in-production` (development only)
+- **Default**: `dev-secret-change-in-production-at-least-32-chars` (development only, from DEFAULT_JWT_SECRET constant)
 - **Validation**:
   - Must be at least 32 characters for security
   - Validation enforced in all environments
@@ -188,51 +188,58 @@ Authentication and security configuration.
 
 ## Environment File Priority
 
-Environment files are loaded in this priority order (highest to lowest):
+NestJS `@nestjs/config` loads environment files in the order specified in `envFilePath`, with **later files taking precedence** over earlier ones.
+
+The configuration in `shared.module.ts` uses: `envFilePath: [".env.local", ".env.production", ".env"]`
+
+**How it works**: NestJS loads each file in sequence. If a variable exists in multiple files, the value from the **rightmost** file (last loaded) wins.
+
+### Effective Priority (Highest to Lowest)
 
 ```
-1. .env.local          (highest priority - local development overrides)
-   ↓
-2. .env.production     (production-specific values)
-   ↓
-3. .env                (committed defaults)
-   ↓
-4. Schema defaults     (lowest priority - hardcoded fallbacks)
+1. .env.local          (HIGHEST priority - loaded last, overrides everything)
+2. .env.production     (medium priority - loaded second)
+3. .env                (lowest priority - loaded first)
+4. Schema defaults     (fallback when variable not found in any file)
 ```
+
+**Example**: If `PORT=3000` in `.env` and `PORT=8080` in `.env.local`, the app uses `PORT=8080`.
 
 ### File Usage Guidelines
 
 | File              | Purpose                             | Git Tracked | When to Use                       |
 | ----------------- | ----------------------------------- | ----------- | --------------------------------- |
-| `.env`            | Default values for all environments | ✅ Yes      | Commit safe defaults, no secrets  |
+| `.env`            | Default values for all environments | ❌ No       | Local development, not committed  |
 | `.env.production` | Production secrets and overrides    | ❌ No       | Deploy to production servers only |
 | `.env.local`      | Local development overrides         | ❌ No       | Personal settings, never commit   |
 | `.env.example`    | Documentation of all variables      | ✅ Yes      | Reference for required variables  |
+
+**Important**: `.env`, `.env.production`, and `.env.local` are all **git-ignored**. Only `.env.example` is committed to version control as documentation.
 
 ### Example Priority Resolution
 
 Given these files:
 
 ```bash
-# .env (committed)
+# .env (git-ignored, loaded first)
 PORT=8000
-JWT_SECRET=dev-secret-change-in-production
+JWT_SECRET=dev-secret-change-in-production-at-least-32-chars
 LOG_LEVEL=info
 
-# .env.production (git-ignored)
+# .env.production (git-ignored, loaded second - overrides .env)
 JWT_SECRET=prod-super-secure-secret-32-chars-minimum
 LOG_LEVEL=warn
 
-# .env.local (git-ignored)
+# .env.local (git-ignored, loaded last - highest priority)
 PORT=9000
 LOG_LEVEL=debug
 ```
 
-**Result**:
+**Result** (each later file overrides earlier values):
 
-- `PORT=9000` (from .env.local)
-- `JWT_SECRET=prod-super-secure-secret-32-chars-minimum` (from .env.production)
-- `LOG_LEVEL=debug` (from .env.local)
+- `PORT=9000` (from .env.local, overrides .env)
+- `JWT_SECRET=prod-super-secure-secret-32-chars-minimum` (from .env.production, overrides .env, not overridden by .env.local)
+- `LOG_LEVEL=debug` (from .env.local, overrides both .env.production and .env)
 
 ---
 
@@ -387,12 +394,16 @@ export class AppConfigSchema {
 2. **Update the loader** (`src/shared/config/config.loader.ts`):
 
 ```typescript
-const appConfig = plainToInstance(AppConfigSchema, {
-  PORT: process.env.PORT || "8000",
-  NODE_ENV: process.env.NODE_ENV || Environment.Development,
-  LOG_LEVEL: process.env.LOG_LEVEL || LogLevel.Info,
-  API_BASE_URL: process.env.API_BASE_URL || "http://localhost:8000", // Add here
-});
+const appConfig = loadAndValidateSchema(
+  AppConfigSchema,
+  {
+    PORT: process.env.PORT || "8000",
+    NODE_ENV: process.env.NODE_ENV || Environment.Development,
+    LOG_LEVEL: process.env.LOG_LEVEL || LogLevel.Info,
+    API_BASE_URL: process.env.API_BASE_URL || "http://localhost:8000", // Add here
+  },
+  "AppConfig",
+);
 ```
 
 3. **Update `.env.example`**:
@@ -440,23 +451,22 @@ export interface ValidatedConfig {
 export function loadConfig(): ValidatedConfig {
   // ... existing app and auth config ...
 
-  // Load database config
-  const databaseConfig = plainToInstance(
+  // Load database config using the helper
+  const databaseConfig = loadAndValidateSchema(
     DatabaseConfigSchema,
     {
       DATABASE_URL:
         process.env.DATABASE_URL || "postgresql://localhost:5432/mydb",
       DATABASE_POOL_SIZE: process.env.DATABASE_POOL_SIZE || "10",
     },
-    { enableImplicitConversion: true },
+    "DatabaseConfig",
   );
-  validateConfig(databaseConfig, "DatabaseConfig");
 
-  return {
+  return Object.freeze({
     app: appConfig,
     auth: authConfig,
     database: databaseConfig, // Add here
-  };
+  });
 }
 ```
 
@@ -785,9 +795,11 @@ import { AppConfigService } from "~/shared/config/app-config.service";
 
 **Solution**:
 
+The default `DEFAULT_JWT_SECRET` constant is already 32+ characters and will work. If you need a custom one:
+
 ```bash
 # Generate a development secret (or use any 32+ character string)
-echo "JWT_SECRET=dev-secret-at-least-32-characters-long-ok" > .env
+echo "JWT_SECRET=dev-secret-change-in-production-at-least-32-chars" > .env
 ```
 
 ---

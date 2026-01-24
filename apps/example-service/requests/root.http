@@ -1,0 +1,3 @@
+### Get root endpoint (public)
+# Returns basic service information
+GET {{baseUrl}}/

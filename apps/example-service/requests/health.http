@@ -1,0 +1,3 @@
+### Health check (public)
+# Returns health status of the service
+GET {{baseUrl}}/health

@@ -15,6 +15,12 @@ After `Write` or `Edit` tool calls:
 
 These hooks run synchronously to ensure code is properly formatted and linted after changes.
 
+## Skills
+
+- **docs** (`/docs`) - Standards for writing concise documentation
+
+Provides guidelines for creating user-focused READMEs and markdown documentation across the monorepo.
+
 ## Enabled Plugins
 
 - **frontend-design** - Production-grade frontend design and components

@@ -1,23 +1,25 @@
- tapiVersion: 1
+apiVersion: 1
 
 datasources:
   # Prometheus datasource
   - name: Prometheus
     type: prometheus
+    uid: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
     editable: true
     jsonData:
-      timeInterval: '15s'
+      timeInterval: "15s"
 
   # Jaeger datasource for tracing
   - name: Jaeger
     type: jaeger
+    uid: jaeger
     access: proxy
     url: http://jaeger:16686
     editable: true
     jsonData:
       tracesToLogsV2:
-        datasourceUid: 'loki'
-        tags: ['trace_id']
+        datasourceUid: "loki"
+        tags: ["trace_id"]

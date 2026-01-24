@@ -20,6 +20,7 @@ docker-compose up -d
 ```
 
 This starts:
+
 - **Jaeger** at http://localhost:16686 (traces)
 - **Prometheus** at http://localhost:9090 (metrics)
 - **Grafana** at http://localhost:3000 (dashboards)
@@ -60,12 +61,14 @@ curl -X POST http://localhost:8000/products \
 ### 5. View Results
 
 **Traces in Jaeger**:
+
 1. Open http://localhost:16686
 2. Select `example-service` from the service dropdown
 3. Click "Find Traces"
 4. Click on a trace to see the full request flow
 
 **Metrics in Prometheus**:
+
 1. Open http://localhost:9090
 2. Try queries:
    - `http_server_requests_total` - Total HTTP requests
@@ -73,10 +76,17 @@ curl -X POST http://localhost:8000/products \
    - `process_cpu_seconds_total` - CPU usage
 
 **Dashboards in Grafana**:
+
 1. Open http://localhost:3000
-2. Login: admin/admin
-3. Datasources are pre-configured (Prometheus + Jaeger)
-4. Create custom dashboards
+2. Login: admin/admin (or browse anonymously)
+3. Look for **"Example Service - Observability Dashboard"** - automatically loaded!
+4. Dashboard includes:
+   - 📊 Request rate, duration percentiles (p50/p95/p99), error rate
+   - 🌐 HTTP status codes distribution, requests by endpoint
+   - 💻 CPU usage, memory usage, event loop lag
+   - 🔗 Direct links to Jaeger for trace exploration
+5. Datasources are pre-configured (Prometheus + Jaeger)
+6. Create additional custom dashboards as needed
 
 **Logs with Trace Correlation**:
 
@@ -147,19 +157,19 @@ OpenTelemetry auto-instrumentation captures:
 ### Add Attributes to Current Span
 
 ```typescript
-import { addSpanAttributes } from '@monorepo/otel'
+import { addSpanAttributes } from "@monorepo/otel";
 
 @Injectable()
 export class ProductService {
   async createProduct(dto: CreateProductDto): Promise<Product> {
     // Add business context to the auto-instrumented HTTP span
     addSpanAttributes({
-      'product.sku': dto.sku,
-      'product.category': dto.category,
-      'product.price': dto.price,
-    })
+      "product.sku": dto.sku,
+      "product.category": dto.category,
+      "product.price": dto.price,
+    });
 
-    return this.repository.save(dto)
+    return this.repository.save(dto);
   }
 }
 ```
@@ -218,15 +228,15 @@ packages/otel/
 **1. main.ts** (BEFORE NestFactory.create)
 
 ```typescript
-import { OtelSDKManager, loadOtelConfig } from '@monorepo/otel'
+import { OtelSDKManager, loadOtelConfig } from "@monorepo/otel";
 
 async function bootstrap() {
   // Initialize OpenTelemetry FIRST
-  const otel = new OtelSDKManager(loadOtelConfig())
-  otel.initialize()
+  const otel = new OtelSDKManager(loadOtelConfig());
+  otel.initialize();
 
   // Then create NestJS app
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create(AppModule);
   // ...
 }
 ```
@@ -234,16 +244,16 @@ async function bootstrap() {
 **2. shared.module.ts** (Pino configuration)
 
 ```typescript
-import { createPinoOtelMixin } from '@monorepo/otel'
+import { createPinoOtelMixin } from "@monorepo/otel";
 
 LoggerModule.forRootAsync({
   useFactory: () => ({
     pinoHttp: {
-      mixin: createPinoOtelMixin(),  // ← Injects trace IDs into logs
+      mixin: createPinoOtelMixin(), // ← Injects trace IDs into logs
       // ... other config
-    }
-  })
-})
+    },
+  }),
+});
 ```
 
 ### Data Flow
@@ -307,6 +317,7 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
 ### No traces in Jaeger
 
 **Check**:
+
 1. Is Jaeger running? `docker ps | grep jaeger`
 2. Is OTLP endpoint correct? Default: `http://localhost:4318/v1/traces`
 3. Is tracing enabled? `OTEL_TRACING_ENABLED=true`
@@ -317,19 +328,22 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
 ### Prometheus can't scrape metrics
 
 **Check**:
+
 1. Is metrics endpoint accessible? `curl http://localhost:9464/metrics`
 2. Is Prometheus configured correctly? Check `infrastructure/prometheus.yml`
 3. For **Linux**: Update Prometheus target to `172.17.0.1:9464` (Docker bridge IP)
 
 **Solution for Linux**:
+
 ```yaml
 # infrastructure/prometheus.yml
-- targets: ['172.17.0.1:9464']  # Replace host.docker.internal
+- targets: ["172.17.0.1:9464"] # Replace host.docker.internal
 ```
 
 ### Logs missing trace_id
 
 **Check**:
+
 1. Is Pino mixin configured? Look for `mixin: createPinoOtelMixin()` in shared.module.ts
 2. Is OTel initialized BEFORE NestFactory.create()? Must be first!
 3. Is there an active span? (Only logs within HTTP requests have trace context)
@@ -337,6 +351,7 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
 ### High overhead
 
 **Solution**:
+
 1. Reduce sample rate: `OTEL_TRACE_SAMPLE_RATE=0.1`
 2. Disable expensive instrumentations in `packages/otel/src/config.ts`
 3. Increase batch size for span processor
@@ -346,6 +361,7 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
 ## Adding Observability to New Services
 
 1. **Add dependency** to `package.json`:
+
    ```json
    {
      "dependencies": {
@@ -355,14 +371,16 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
    ```
 
 2. **Initialize in main.ts** (before NestFactory.create):
-   ```typescript
-   import { OtelSDKManager, loadOtelConfig } from '@monorepo/otel'
 
-   const otel = new OtelSDKManager(loadOtelConfig())
-   otel.initialize()
+   ```typescript
+   import { OtelSDKManager, loadOtelConfig } from "@monorepo/otel";
+
+   const otel = new OtelSDKManager(loadOtelConfig());
+   otel.initialize();
    ```
 
 3. **Add Pino mixin** in logger config:
+
    ```typescript
    import { createPinoOtelMixin } from '@monorepo/otel'
 
@@ -372,6 +390,7 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
    ```
 
 4. **Configure environment** in `.env`:
+
    ```bash
    OTEL_SERVICE_NAME=my-new-service
    OTEL_METRICS_PORT=9465  # Use unique port per service
@@ -381,9 +400,9 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
    ```yaml
    # infrastructure/prometheus.yml
    scrape_configs:
-     - job_name: 'my-new-service'
+     - job_name: "my-new-service"
        static_configs:
-         - targets: ['host.docker.internal:9465']
+         - targets: ["host.docker.internal:9465"]
    ```
 
 ---
@@ -423,6 +442,7 @@ OTEL_RESOURCE_ATTRIBUTES=env=production,region=us-east-1,cluster=prod-01,version
 - **Grafana Docs**: https://grafana.com/docs/
 
 **Package Documentation**:
+
 - `packages/otel/README.md` - Full API reference
 - `infrastructure/README.md` - Infrastructure setup guide
 

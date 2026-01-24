@@ -1,12 +1,4 @@
 {
-  "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
-    "code-simplifier@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
-    "pr-review-toolkit@claude-plugins-official": true
-  },
   "hooks": {
     "PostToolUse": [
       {
@@ -15,17 +7,25 @@
           {
             "type": "command",
             "command": "pnpm style:format -- {{file}} 2>/dev/null || true",
-            "statusMessage": "Formatting with Prettier...",
-            "timeout": 10
+            "timeout": 10,
+            "statusMessage": "Formatting with Prettier..."
           },
           {
             "type": "command",
             "command": "pnpm lint 2>/dev/null || true",
-            "statusMessage": "Running ESLint...",
-            "timeout": 15
+            "timeout": 15,
+            "statusMessage": "Running ESLint..."
           }
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "feature-dev@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true
   }
 }

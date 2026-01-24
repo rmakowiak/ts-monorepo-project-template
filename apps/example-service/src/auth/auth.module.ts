@@ -6,16 +6,16 @@ import { AuthService } from "./application/auth.service";
 import { SimpleAuthAdapter } from "./outbound/adapters/simple-auth.adapter";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
-import type { AppConfig } from "~/shared/config/app.config";
+import { AppConfigService } from "~/shared/config/app-config.service";
 
 @Module({
   imports: [
     SharedModule,
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
-      inject: ["AppConfig"],
-      useFactory: (config: AppConfig) => ({
-        secret: config.jwtSecret,
+      inject: [AppConfigService],
+      useFactory: (config: AppConfigService) => ({
+        secret: config.auth.JWT_SECRET,
         signOptions: { expiresIn: "24h" },
       }),
     }),

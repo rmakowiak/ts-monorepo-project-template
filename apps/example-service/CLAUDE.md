@@ -45,6 +45,7 @@ This service follows **hexagonal architecture** principles:
 ```
 
 **Key Benefits:**
+
 - ✅ **Testable**: Mock adapters for easy testing
 - ✅ **Flexible**: Swap implementations without touching business logic
 - ✅ **Independent**: Domain logic doesn't depend on frameworks or databases
@@ -124,11 +125,13 @@ src/
 ```typescript
 // Port (interface)
 export type ProductRepository = {
-  save(product: Product): Promise<Product>
-  findById(id: ProductId): Promise<Product | null>
-  findAll(options?: QueryOptions): Promise<{ products: Product[]; total: number }>
-  delete(id: ProductId): Promise<void>
-}
+  save(product: Product): Promise<Product>;
+  findById(id: ProductId): Promise<Product | null>;
+  findAll(
+    options?: QueryOptions,
+  ): Promise<{ products: Product[]; total: number }>;
+  delete(id: ProductId): Promise<void>;
+};
 ```
 
 **Adapter**: A concrete implementation of a port.
@@ -137,11 +140,11 @@ export type ProductRepository = {
 // Adapter (implementation)
 @Injectable()
 export class InMemoryProductRepository implements ProductRepository {
-  private products = new Map<ProductId, Product>()
+  private products = new Map<ProductId, Product>();
 
   async save(product: Product): Promise<Product> {
-    this.products.set(product.id, product)
-    return product
+    this.products.set(product.id, product);
+    return product;
   }
   // ... other methods
 }
@@ -154,7 +157,7 @@ export class InMemoryProductRepository implements ProductRepository {
   providers: [
     ProductService,
     {
-      provide: 'ProductRepository',
+      provide: "ProductRepository",
       useClass: InMemoryProductRepository,
     },
   ],
@@ -168,8 +171,8 @@ export class ProductModule {}
 @Injectable()
 export class ProductService {
   constructor(
-    @Inject('ProductRepository')
-    private readonly repository: ProductRepository,  // Port, not adapter
+    @Inject("ProductRepository")
+    private readonly repository: ProductRepository, // Port, not adapter
   ) {}
 }
 ```
@@ -180,13 +183,13 @@ export class ProductService {
 
 ```typescript
 export type Product = Readonly<{
-  id: ProductId
-  name: string
-  price: number
-  stock: number
-  createdAt: Date
-  updatedAt: Date
-}>
+  id: ProductId;
+  name: string;
+  price: number;
+  stock: number;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
 ```
 
 **Domain Errors**: Custom errors for business rule violations.
@@ -194,8 +197,8 @@ export type Product = Readonly<{
 ```typescript
 export class ProductNotFoundError extends Error {
   constructor(id: ProductId) {
-    super(`Product not found: ${id}`)
-    this.name = 'ProductNotFoundError'
+    super(`Product not found: ${id}`);
+    this.name = "ProductNotFoundError";
   }
 }
 ```
@@ -208,13 +211,13 @@ export class ProductNotFoundError extends Error {
 @Injectable()
 export class ProductService {
   constructor(
-    @Inject('ProductRepository')
+    @Inject("ProductRepository")
     private readonly repository: ProductRepository,
     private readonly logger: PinoLogger,
   ) {}
 
   async createProduct(dto: CreateProductDto): Promise<Product> {
-    this.logger.info({ sku: dto.sku }, 'Creating product')
+    this.logger.info({ sku: dto.sku }, "Creating product");
 
     // Business logic
     const product: Product = {
@@ -222,9 +225,9 @@ export class ProductService {
       ...dto,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }
+    };
 
-    return this.repository.save(product)
+    return this.repository.save(product);
   }
 }
 ```
@@ -234,17 +237,17 @@ export class ProductService {
 **Controllers**: Handle HTTP requests, validate input, call services.
 
 ```typescript
-@Controller('products')
+@Controller("products")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Post()
-  @Roles('admin')
-  @ApiOperation({ summary: 'Create a new product' })
+  @Roles("admin")
+  @ApiOperation({ summary: "Create a new product" })
   async create(@Body() dto: CreateProductDto): Promise<ProductResponseDto> {
-    const product = await this.productService.createProduct(dto)
-    return this.toDto(product)
+    const product = await this.productService.createProduct(dto);
+    return this.toDto(product);
   }
 }
 ```
@@ -255,11 +258,11 @@ export class ProductController {
 @Catch(ProductNotFoundError)
 export class ProductExceptionFilter implements ExceptionFilter {
   catch(exception: ProductNotFoundError, host: ArgumentsHost) {
-    const response = host.switchToHttp().getResponse<Response>()
+    const response = host.switchToHttp().getResponse<Response>();
     response.status(HttpStatus.NOT_FOUND).json({
       statusCode: HttpStatus.NOT_FOUND,
       message: exception.message,
-    })
+    });
   }
 }
 ```
@@ -315,6 +318,7 @@ Controller → Service → Repository Port
 - Adapters are injected via DI
 
 **Never**:
+
 - Domain shouldn't know about Services
 - Services shouldn't know about Controllers
 - Ports shouldn't know about Adapters
@@ -329,7 +333,7 @@ This service uses **Pino** via `nestjs-pino` for structured, high-performance lo
 
 ```typescript
 // main.ts
-app.useLogger(app.get(Logger))
+app.useLogger(app.get(Logger));
 ```
 
 ### Service-Level Logging
@@ -338,19 +342,22 @@ app.useLogger(app.get(Logger))
 @Injectable()
 export class ProductService {
   constructor(private readonly logger: PinoLogger) {
-    this.logger.setContext(ProductService.name)
+    this.logger.setContext(ProductService.name);
   }
 
   async createProduct(dto: CreateProductDto): Promise<Product> {
-    this.logger.info({ sku: dto.sku, name: dto.name }, 'Creating product')
+    this.logger.info({ sku: dto.sku, name: dto.name }, "Creating product");
 
     try {
-      const product = await this.repository.save(product)
-      this.logger.info({ productId: product.id }, 'Product created successfully')
-      return product
+      const product = await this.repository.save(product);
+      this.logger.info(
+        { productId: product.id },
+        "Product created successfully",
+      );
+      return product;
     } catch (error) {
-      this.logger.error({ error, sku: dto.sku }, 'Failed to create product')
-      throw error
+      this.logger.error({ error, sku: dto.sku }, "Failed to create product");
+      throw error;
     }
   }
 }
@@ -388,7 +395,13 @@ Logs are pretty-printed in development:
 Logs are JSON in production for log aggregation:
 
 ```json
-{"level":"info","time":1642242615,"context":"ProductService","sku":"MOUSE-001","msg":"Creating product"}
+{
+  "level": "info",
+  "time": 1642242615,
+  "context": "ProductService",
+  "sku": "MOUSE-001",
+  "msg": "Creating product"
+}
 ```
 
 ---
@@ -400,129 +413,139 @@ Logs are JSON in production for log aggregation:
 **Example**: Adding a "Category" module
 
 1. **Create folder structure**:
+
 ```bash
 mkdir -p src/category/{inbound,application/dto,domain,outbound/{ports,adapters}}
 ```
 
 2. **Define domain model** (`domain/category.entity.ts`):
+
 ```typescript
-export type CategoryId = string
+export type CategoryId = string;
 
 export type Category = Readonly<{
-  id: CategoryId
-  name: string
-  description: string
-  createdAt: Date
-  updatedAt: Date
-}>
+  id: CategoryId;
+  name: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
 ```
 
 3. **Create domain errors** (`domain/category.error.ts`):
+
 ```typescript
 export class CategoryNotFoundError extends Error {
   constructor(id: CategoryId) {
-    super(`Category not found: ${id}`)
-    this.name = 'CategoryNotFoundError'
+    super(`Category not found: ${id}`);
+    this.name = "CategoryNotFoundError";
   }
 }
 ```
 
 4. **Define repository port** (`outbound/ports/category-repository.port.ts`):
+
 ```typescript
 export type CategoryRepository = {
-  save(category: Category): Promise<Category>
-  findById(id: CategoryId): Promise<Category | null>
-  findAll(): Promise<Category[]>
-  delete(id: CategoryId): Promise<void>
-}
+  save(category: Category): Promise<Category>;
+  findById(id: CategoryId): Promise<Category | null>;
+  findAll(): Promise<Category[]>;
+  delete(id: CategoryId): Promise<void>;
+};
 ```
 
 5. **Create adapter** (`outbound/adapters/in-memory-category.repository.ts`):
+
 ```typescript
 @Injectable()
 export class InMemoryCategoryRepository implements CategoryRepository {
-  private categories = new Map<CategoryId, Category>()
+  private categories = new Map<CategoryId, Category>();
 
   async save(category: Category): Promise<Category> {
-    this.logger.debug({ categoryId: category.id }, 'Saving category')
-    this.categories.set(category.id, category)
-    return category
+    this.logger.debug({ categoryId: category.id }, "Saving category");
+    this.categories.set(category.id, category);
+    return category;
   }
   // ... implement other methods
 }
 ```
 
 6. **Create DTOs** (`application/dto/`):
+
 ```typescript
 export class CreateCategoryDto {
   @ApiProperty()
   @IsString()
   @MaxLength(100)
-  name!: string
+  name!: string;
 
   @ApiProperty()
   @IsString()
   @MaxLength(500)
-  description!: string
+  description!: string;
 }
 ```
 
 7. **Create service** (`application/category.service.ts`):
+
 ```typescript
 @Injectable()
 export class CategoryService {
   constructor(
-    @Inject('CategoryRepository')
+    @Inject("CategoryRepository")
     private readonly repository: CategoryRepository,
     private readonly logger: PinoLogger,
   ) {
-    this.logger.setContext(CategoryService.name)
+    this.logger.setContext(CategoryService.name);
   }
 
   async createCategory(dto: CreateCategoryDto): Promise<Category> {
-    this.logger.info({ name: dto.name }, 'Creating category')
+    this.logger.info({ name: dto.name }, "Creating category");
     const category: Category = {
       id: randomUUID(),
       ...dto,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }
-    return this.repository.save(category)
+    };
+    return this.repository.save(category);
   }
 }
 ```
 
 8. **Create controller** (`inbound/category.controller.ts`):
+
 ```typescript
-@ApiTags('categories')
-@Controller('categories')
+@ApiTags("categories")
+@Controller("categories")
 @UseGuards(JwtAuthGuard)
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create category' })
+  @ApiOperation({ summary: "Create category" })
   async create(@Body() dto: CreateCategoryDto) {
-    return this.categoryService.createCategory(dto)
+    return this.categoryService.createCategory(dto);
   }
 }
 ```
 
 9. **Create exception filter** (`inbound/category-exception.filter.ts`):
+
 ```typescript
 @Catch(CategoryNotFoundError)
 export class CategoryExceptionFilter implements ExceptionFilter {
   catch(exception: CategoryNotFoundError, host: ArgumentsHost) {
-    const response = host.switchToHttp().getResponse<Response>()
+    const response = host.switchToHttp().getResponse<Response>();
     response.status(HttpStatus.NOT_FOUND).json({
       statusCode: HttpStatus.NOT_FOUND,
       message: exception.message,
-    })
+    });
   }
 }
 ```
 
 10. **Create module** (`category.module.ts`):
+
 ```typescript
 @Module({
   imports: [SharedModule, AuthModule],
@@ -530,7 +553,7 @@ export class CategoryExceptionFilter implements ExceptionFilter {
   providers: [
     CategoryService,
     {
-      provide: 'CategoryRepository',
+      provide: "CategoryRepository",
       useClass: InMemoryCategoryRepository,
     },
   ],
@@ -540,6 +563,7 @@ export class CategoryModule {}
 ```
 
 11. **Register in AppModule** (`app.module.ts`):
+
 ```typescript
 @Module({
   imports: [
@@ -547,7 +571,7 @@ export class CategoryModule {}
     AuthModule,
     HealthModule,
     ProductModule,
-    CategoryModule,  // Add here
+    CategoryModule, // Add here
   ],
 })
 export class AppModule {}
@@ -582,7 +606,7 @@ constructor(
 
 ```typescript
 if (!product) {
-  throw new ProductNotFoundError(id)
+  throw new ProductNotFoundError(id);
 }
 ```
 
@@ -590,7 +614,7 @@ if (!product) {
 
 ```typescript
 if (!product) {
-  throw new Error('Product not found')  // Too generic
+  throw new Error("Product not found"); // Too generic
 }
 ```
 
@@ -603,16 +627,16 @@ if (!product) {
 export class CreateProductDto {
   @ApiProperty()
   @IsString()
-  name!: string
+  name!: string;
 }
 
 // Response DTO
 export class ProductResponseDto {
   @ApiProperty()
-  id!: string
+  id!: string;
 
   @ApiProperty()
-  name!: string
+  name!: string;
 }
 ```
 
@@ -631,17 +655,17 @@ async create(@Body() product: Product): Promise<Product> {  // Bad
 
 ```typescript
 export type Product = Readonly<{
-  id: ProductId
-  name: string
-}>
+  id: ProductId;
+  name: string;
+}>;
 ```
 
 **❌ Bad**: Mutable entities
 
 ```typescript
 export interface Product {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 ```
 
@@ -652,7 +676,7 @@ Only export what other modules need:
 ```typescript
 @Module({
   providers: [ProductService, ProductRepository],
-  exports: [ProductService],  // Only export service
+  exports: [ProductService], // Only export service
 })
 export class ProductModule {}
 ```
@@ -666,6 +690,7 @@ This service uses a **comprehensive, strategic testing approach** with separate 
 ### Testing Philosophy
 
 **Key Principles:**
+
 - ✅ **Meaningful over exhaustive**: Focus on valuable tests, not test count
 - ✅ **ECP & BVA**: Use Equivalence Class Partitioning and Boundary Value Analysis for strategic coverage
 - ✅ **Separation of concerns**: Unit tests for logic, integration tests for HTTP flow
@@ -718,18 +743,18 @@ Files covered by integration tests or infrastructure:
 {
   "collectCoverageFrom": [
     "**/*.ts",
-    "!**/*.spec.ts",           // Test files
-    "!**/*.dto.ts",            // DTOs (validated in integration)
-    "!**/*.entity.ts",         // Domain types
-    "!**/*.port.ts",           // Interfaces
-    "!**/*.error.ts",          // Domain errors
-    "!**/main.ts",             // Bootstrap
-    "!**/*.module.ts",         // Module definitions
-    "!**/*.controller.ts",     // Covered by integration tests
-    "!**/*.filter.ts",         // Covered by integration tests
-    "!**/*.decorator.ts",      // Covered by integration tests
-    "!**/config/**",           // Configuration
-    "!**/indicators/**",       // Health indicators (integration)
+    "!**/*.spec.ts", // Test files
+    "!**/*.dto.ts", // DTOs (validated in integration)
+    "!**/*.entity.ts", // Domain types
+    "!**/*.port.ts", // Interfaces
+    "!**/*.error.ts", // Domain errors
+    "!**/main.ts", // Bootstrap
+    "!**/*.module.ts", // Module definitions
+    "!**/*.controller.ts", // Covered by integration tests
+    "!**/*.filter.ts", // Covered by integration tests
+    "!**/*.decorator.ts", // Covered by integration tests
+    "!**/config/**", // Configuration
+    "!**/indicators/**", // Health indicators (integration)
     "!**/adapters/simple-*.ts", // Simple adapters
     "!**/auth/application/auth.service.ts" // Simple wrapper
   ]
@@ -765,15 +790,18 @@ Unit tests focus on **isolated business logic** with mocked dependencies.
 **Example: Testing a Service**
 
 ```typescript
-import { ProductService } from './product.service'
-import { createMockLogger } from '../../../test/helpers/mock-logger.factory'
-import { createTestProductDto, BOUNDARY_VALUES } from '../../../test/fixtures/product.fixtures'
-import type { ProductRepository } from '../outbound/ports/product-repository.port'
+import { ProductService } from "./product.service";
+import { createMockLogger } from "../../../test/helpers/mock-logger.factory";
+import {
+  createTestProductDto,
+  BOUNDARY_VALUES,
+} from "../../../test/fixtures/product.fixtures";
+import type { ProductRepository } from "../outbound/ports/product-repository.port";
 
-describe('ProductService', () => {
-  let service: ProductService
-  let mockRepository: jest.Mocked<ProductRepository>
-  let mockLogger: ReturnType<typeof createMockLogger>
+describe("ProductService", () => {
+  let service: ProductService;
+  let mockRepository: jest.Mocked<ProductRepository>;
+  let mockLogger: ReturnType<typeof createMockLogger>;
 
   beforeEach(() => {
     mockRepository = {
@@ -782,131 +810,142 @@ describe('ProductService', () => {
       findBySku: jest.fn(),
       findAll: jest.fn(),
       delete: jest.fn(),
-    }
+    };
 
-    mockLogger = createMockLogger()
-    service = new ProductService(mockRepository, mockLogger)
-  })
+    mockLogger = createMockLogger();
+    service = new ProductService(mockRepository, mockLogger);
+  });
 
-  describe('createProduct (ECP & BVA)', () => {
-    it('should create product with valid data (ECP: Valid)', async () => {
+  describe("createProduct (ECP & BVA)", () => {
+    it("should create product with valid data (ECP: Valid)", async () => {
       // Arrange
-      const dto = createTestProductDto({ sku: 'TEST-001' })
-      mockRepository.findBySku.mockResolvedValue(null) // No conflict
-      mockRepository.save.mockImplementation(async (p) => p)
+      const dto = createTestProductDto({ sku: "TEST-001" });
+      mockRepository.findBySku.mockResolvedValue(null); // No conflict
+      mockRepository.save.mockImplementation(async (p) => p);
 
       // Act
-      const result = await service.createProduct(dto)
+      const result = await service.createProduct(dto);
 
       // Assert
-      expect(result.name).toBe(dto.name)
+      expect(result.name).toBe(dto.name);
       expect(mockRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           name: dto.name,
           sku: dto.sku,
           price: dto.price,
         }),
-      )
-    })
+      );
+    });
 
-    it('should throw when SKU exists (ECP: Invalid - Duplicate)', async () => {
+    it("should throw when SKU exists (ECP: Invalid - Duplicate)", async () => {
       // Arrange
-      const dto = createTestProductDto({ sku: 'EXISTING-SKU' })
-      const existing = createTestProduct({ sku: 'EXISTING-SKU' })
-      mockRepository.findBySku.mockResolvedValue(existing)
+      const dto = createTestProductDto({ sku: "EXISTING-SKU" });
+      const existing = createTestProduct({ sku: "EXISTING-SKU" });
+      mockRepository.findBySku.mockResolvedValue(existing);
 
       // Act & Assert
-      await expect(service.createProduct(dto)).rejects.toThrow(ProductAlreadyExistsError)
-    })
+      await expect(service.createProduct(dto)).rejects.toThrow(
+        ProductAlreadyExistsError,
+      );
+    });
 
-    it('should accept minimum valid price (BVA: Lower boundary)', async () => {
+    it("should accept minimum valid price (BVA: Lower boundary)", async () => {
       // Arrange
       const dto = createTestProductDto({
-        sku: 'MIN-PRICE',
-        price: BOUNDARY_VALUES.price.valid.minimum // 0.01
-      })
-      mockRepository.findBySku.mockResolvedValue(null)
-      mockRepository.save.mockImplementation(async (p) => p)
+        sku: "MIN-PRICE",
+        price: BOUNDARY_VALUES.price.valid.minimum, // 0.01
+      });
+      mockRepository.findBySku.mockResolvedValue(null);
+      mockRepository.save.mockImplementation(async (p) => p);
 
       // Act
-      const result = await service.createProduct(dto)
+      const result = await service.createProduct(dto);
 
       // Assert
-      expect(result.price).toBe(0.01)
-    })
-  })
-})
+      expect(result.price).toBe(0.01);
+    });
+  });
+});
 ```
 
 **Example: Testing a Repository**
 
 ```typescript
-describe('InMemoryProductRepository', () => {
-  let repository: InMemoryProductRepository
+describe("InMemoryProductRepository", () => {
+  let repository: InMemoryProductRepository;
 
   beforeEach(() => {
-    repository = new InMemoryProductRepository(createMockLogger())
-  })
+    repository = new InMemoryProductRepository(createMockLogger());
+  });
 
-  it('should save and retrieve product by ID', async () => {
+  it("should save and retrieve product by ID", async () => {
     // Arrange
-    const product = createTestProduct({ id: 'test-123' })
+    const product = createTestProduct({ id: "test-123" });
 
     // Act
-    await repository.save(product)
-    const result = await repository.findById('test-123')
+    await repository.save(product);
+    const result = await repository.findById("test-123");
 
     // Assert
-    expect(result).toEqual(product)
-  })
+    expect(result).toEqual(product);
+  });
 
-  it('should support pagination with limit (BVA)', async () => {
+  it("should support pagination with limit (BVA)", async () => {
     // Arrange - Create 10 products
     for (let i = 0; i < 10; i++) {
-      await repository.save(createTestProduct({ id: `product-${i}` }))
+      await repository.save(createTestProduct({ id: `product-${i}` }));
     }
 
     // Act
-    const result = await repository.findAll({ limit: 5, offset: 0 })
+    const result = await repository.findAll({ limit: 5, offset: 0 });
 
     // Assert
-    expect(result.products).toHaveLength(5)
-    expect(result.total).toBe(10)
-  })
-})
+    expect(result.products).toHaveLength(5);
+    expect(result.total).toBe(10);
+  });
+});
 ```
 
 **Example: Testing Guards**
 
 ```typescript
-describe('JwtAuthGuard', () => {
-  it('should allow access with valid Bearer token (ECP: Valid)', async () => {
+describe("JwtAuthGuard", () => {
+  it("should allow access with valid Bearer token (ECP: Valid)", async () => {
     // Arrange
-    const mockUser: User = { id: '1', email: 'test@test.com', name: 'Test', roles: ['user'] }
-    mockReflector.getAllAndOverride.mockReturnValue(false) // Not public
-    mockAuthService.validateToken.mockResolvedValue(mockUser)
+    const mockUser: User = {
+      id: "1",
+      email: "test@test.com",
+      name: "Test",
+      roles: ["user"],
+    };
+    mockReflector.getAllAndOverride.mockReturnValue(false); // Not public
+    mockAuthService.validateToken.mockResolvedValue(mockUser);
 
-    const request = mockContext.switchToHttp().getRequest()
-    request.headers.authorization = 'Bearer valid-token-string'
+    const request = mockContext.switchToHttp().getRequest();
+    request.headers.authorization = "Bearer valid-token-string";
 
     // Act
-    const result = await guard.canActivate(mockContext)
+    const result = await guard.canActivate(mockContext);
 
     // Assert
-    expect(result).toBe(true)
-    expect(mockAuthService.validateToken).toHaveBeenCalledWith('valid-token-string')
-    expect(request.user).toEqual(mockUser)
-  })
+    expect(result).toBe(true);
+    expect(mockAuthService.validateToken).toHaveBeenCalledWith(
+      "valid-token-string",
+    );
+    expect(request.user).toEqual(mockUser);
+  });
 
-  it('should throw when header missing (ECP: Invalid - Missing auth)', async () => {
+  it("should throw when header missing (ECP: Invalid - Missing auth)", async () => {
     // Arrange
-    mockReflector.getAllAndOverride.mockReturnValue(false)
+    mockReflector.getAllAndOverride.mockReturnValue(false);
     // No authorization header
 
     // Act & Assert
-    await expect(guard.canActivate(mockContext)).rejects.toThrow(UnauthorizedException)
-  })
-})
+    await expect(guard.canActivate(mockContext)).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+});
 ```
 
 ### Writing Integration Tests
@@ -918,113 +957,115 @@ Integration tests focus on **full HTTP request/response cycles** through the act
 **Setup:**
 
 ```typescript
-import { INestApplication } from '@nestjs/common'
-import request from 'supertest'
-import { createTestApp } from '../helpers/test-app.factory'
-import { createAdminToken, createUserToken } from '../helpers/jwt.factory'
-import { createTestProductDto, BOUNDARY_VALUES } from '../fixtures/product.fixtures'
+import { INestApplication } from "@nestjs/common";
+import request from "supertest";
+import { createTestApp } from "../helpers/test-app.factory";
+import { createAdminToken, createUserToken } from "../helpers/jwt.factory";
+import {
+  createTestProductDto,
+  BOUNDARY_VALUES,
+} from "../fixtures/product.fixtures";
 
-describe('Product API (Integration)', () => {
-  let app: INestApplication
-  let adminToken: string
-  let userToken: string
+describe("Product API (Integration)", () => {
+  let app: INestApplication;
+  let adminToken: string;
+  let userToken: string;
 
   beforeAll(async () => {
-    app = await createTestApp()
-    adminToken = createAdminToken()
-    userToken = createUserToken()
-  })
+    app = await createTestApp();
+    adminToken = createAdminToken();
+    userToken = createUserToken();
+  });
 
   afterAll(async () => {
-    await app.close()
-  })
+    await app.close();
+  });
 
   // Tests here...
-})
+});
 ```
 
 **Example: Testing API Endpoints with ECP & BVA**
 
 ```typescript
-describe('POST /products (ECP + BVA)', () => {
-  it('should create product as admin (ECP: Valid admin)', async () => {
+describe("POST /products (ECP + BVA)", () => {
+  it("should create product as admin (ECP: Valid admin)", async () => {
     // Arrange
-    const dto = createTestProductDto({ sku: `TEST-CREATE-${Date.now()}` })
+    const dto = createTestProductDto({ sku: `TEST-CREATE-${Date.now()}` });
 
     // Act & Assert
     const response = await request(app.getHttpServer())
-      .post('/products')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .post("/products")
+      .set("Authorization", `Bearer ${adminToken}`)
       .send(dto)
-      .expect(201)
+      .expect(201);
 
     expect(response.body).toMatchObject({
       name: dto.name,
       sku: dto.sku,
       price: dto.price,
-    })
-    expect(response.body.id).toBeDefined()
-  })
+    });
+    expect(response.body.id).toBeDefined();
+  });
 
-  it('should return 401 when no auth token provided (ECP: Invalid - No auth)', async () => {
+  it("should return 401 when no auth token provided (ECP: Invalid - No auth)", async () => {
     // Arrange
-    const dto = createTestProductDto()
+    const dto = createTestProductDto();
+
+    // Act & Assert
+    await request(app.getHttpServer()).post("/products").send(dto).expect(401);
+  });
+
+  it("should return 403 when user role tries to create (ECP: Invalid - Wrong role)", async () => {
+    // Arrange
+    const dto = createTestProductDto({ sku: `TEST-USER-${Date.now()}` });
 
     // Act & Assert
     await request(app.getHttpServer())
-      .post('/products')
+      .post("/products")
+      .set("Authorization", `Bearer ${userToken}`)
       .send(dto)
-      .expect(401)
-  })
+      .expect(403);
+  });
 
-  it('should return 403 when user role tries to create (ECP: Invalid - Wrong role)', async () => {
-    // Arrange
-    const dto = createTestProductDto({ sku: `TEST-USER-${Date.now()}` })
-
-    // Act & Assert
-    await request(app.getHttpServer())
-      .post('/products')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send(dto)
-      .expect(403)
-  })
-
-  it('should return 400 for negative price (BVA: Below minimum)', async () => {
+  it("should return 400 for negative price (BVA: Below minimum)", async () => {
     // Arrange
     const dto = createTestProductDto({
       sku: `TEST-NEG-PRICE-${Date.now()}`,
       price: BOUNDARY_VALUES.price.invalid.negative, // -1
-    })
+    });
 
     // Act & Assert
     const response = await request(app.getHttpServer())
-      .post('/products')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .post("/products")
+      .set("Authorization", `Bearer ${adminToken}`)
       .send(dto)
-      .expect(400)
+      .expect(400);
 
     // Validation errors come as an array
-    expect(Array.isArray(response.body.message)).toBe(true)
-    expect(response.body.message.some((msg: string) => msg.includes('positive'))).toBe(true)
-  })
+    expect(Array.isArray(response.body.message)).toBe(true);
+    expect(
+      response.body.message.some((msg: string) => msg.includes("positive")),
+    ).toBe(true);
+  });
 
-  it('should accept minimum valid price (BVA: Lower boundary)', async () => {
+  it("should accept minimum valid price (BVA: Lower boundary)", async () => {
     // Arrange
     const dto = createTestProductDto({
       sku: `TEST-MIN-PRICE-${Date.now()}`,
       price: BOUNDARY_VALUES.price.valid.minimum, // 0.01
-    })
+    });
 
     // Act & Assert
     const response = await request(app.getHttpServer())
-      .post('/products')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .post("/products")
+      .set("Authorization", `Bearer ${adminToken}`)
       .send(dto)
-      .expect(201)
+      .expect(201);
 
-    expect(response.body.price).toBe(0.01)
-  })
-})
+    expect(response.body.price).toBe(0.01);
+  });
+});
 ```
 
 ### Test Helpers & Fixtures
@@ -1032,7 +1073,7 @@ describe('POST /products (ECP + BVA)', () => {
 **Mock Logger Factory** (`test/helpers/mock-logger.factory.ts`):
 
 ```typescript
-import type { PinoLogger } from 'nestjs-pino'
+import type { PinoLogger } from "nestjs-pino";
 
 export function createMockLogger(): jest.Mocked<PinoLogger> {
   return {
@@ -1045,39 +1086,39 @@ export function createMockLogger(): jest.Mocked<PinoLogger> {
     fatal: jest.fn(),
     log: jest.fn(),
     assign: jest.fn(),
-  } as unknown as jest.Mocked<PinoLogger>
+  } as unknown as jest.Mocked<PinoLogger>;
 }
 ```
 
 **JWT Token Factory** (`test/helpers/jwt.factory.ts`):
 
 ```typescript
-import * as jwt from 'jsonwebtoken'
+import * as jwt from "jsonwebtoken";
 
 export function createAdminToken(): string {
   return jwt.sign(
     {
-      sub: 'admin-user-id',
-      email: 'admin@example.com',
-      name: 'Admin User',
-      roles: ['admin', 'user'],
+      sub: "admin-user-id",
+      email: "admin@example.com",
+      name: "Admin User",
+      roles: ["admin", "user"],
     },
-    process.env.JWT_SECRET || 'dev-secret-change-in-production',
-    { expiresIn: '1h' },
-  )
+    process.env.JWT_SECRET || "dev-secret-change-in-production",
+    { expiresIn: "1h" },
+  );
 }
 
 export function createUserToken(): string {
   return jwt.sign(
     {
-      sub: 'regular-user-id',
-      email: 'user@example.com',
-      name: 'Regular User',
-      roles: ['user'],
+      sub: "regular-user-id",
+      email: "user@example.com",
+      name: "Regular User",
+      roles: ["user"],
     },
-    process.env.JWT_SECRET || 'dev-secret-change-in-production',
-    { expiresIn: '1h' },
-  )
+    process.env.JWT_SECRET || "dev-secret-change-in-production",
+    { expiresIn: "1h" },
+  );
 }
 ```
 
@@ -1107,16 +1148,18 @@ export const BOUNDARY_VALUES = {
       negative: -1,
     },
   },
-}
+};
 
-export function createTestProductDto(overrides?: Partial<CreateProductDto>): CreateProductDto {
-  const dto = new CreateProductDto()
-  dto.name = overrides?.name ?? 'New Test Product'
-  dto.description = overrides?.description ?? 'New test product description'
-  dto.sku = overrides?.sku ?? `TEST-${Date.now()}`
-  dto.price = overrides?.price ?? 49.99
-  dto.stock = overrides?.stock ?? 50
-  return dto
+export function createTestProductDto(
+  overrides?: Partial<CreateProductDto>,
+): CreateProductDto {
+  const dto = new CreateProductDto();
+  dto.name = overrides?.name ?? "New Test Product";
+  dto.description = overrides?.description ?? "New test product description";
+  dto.sku = overrides?.sku ?? `TEST-${Date.now()}`;
+  dto.price = overrides?.price ?? 49.99;
+  dto.stock = overrides?.stock ?? 50;
+  return dto;
 }
 ```
 
@@ -1172,6 +1215,7 @@ Unit tests enforce minimum thresholds:
 ### Best Practices
 
 **✅ DO:**
+
 - Use ECP to identify test classes (valid/invalid scenarios)
 - Use BVA to test boundary conditions
 - Co-locate unit tests with source files
@@ -1183,6 +1227,7 @@ Unit tests enforce minimum thresholds:
 - Name tests clearly: `should [action] when [condition] (ECP/BVA: [category])`
 
 **❌ DON'T:**
+
 - Write redundant tests that cover the same equivalence class
 - Test implementation details (private methods)
 - Mix unit and integration test concerns
@@ -1198,14 +1243,14 @@ Unit tests enforce minimum thresholds:
 ### Protecting Routes
 
 ```typescript
-@Controller('products')
-@UseGuards(JwtAuthGuard, RolesGuard)  // Global guard
+@Controller("products")
+@UseGuards(JwtAuthGuard, RolesGuard) // Global guard
 export class ProductController {
   @Get()
-  findAll() {}  // Protected by JWT
+  findAll() {} // Protected by JWT
 
   @Post()
-  @Roles('admin')  // Also requires admin role
+  @Roles("admin") // Also requires admin role
   create() {}
 }
 ```
@@ -1230,11 +1275,13 @@ async getMyProducts(@CurrentUser() user: User) {
 ### Testing with JWT
 
 1. Generate a test token:
+
 ```bash
 node -e "console.log(require('jsonwebtoken').sign({sub:'user-123',email:'test@example.com',name:'Test User',roles:['admin']}, 'dev-secret-change-in-production', {expiresIn:'24h'}))"
 ```
 
 2. Use in API requests:
+
 ```bash
 curl -H "Authorization: Bearer <token>" http://localhost:8000/products
 ```
@@ -1263,51 +1310,61 @@ async create(@Body() dto: CreateProductDto) {
 
 ## Configuration
 
-Configuration is centralized in `shared/config/app.config.ts`.
+Configuration uses `@nestjs/config` with class-validator for type-safe validation organized into namespaces. See **[CONFIG.md](./CONFIG.md)** for comprehensive documentation.
+
+### Quick Reference
+
+**Configuration Namespaces**:
+
+- `app` - Application settings (PORT, NODE_ENV, LOG_LEVEL)
+- `auth` - Authentication settings (JWT_SECRET)
+
+**Environment Files** (priority order):
+
+- `.env.local` - Local overrides (git-ignored)
+- `.env.production` - Production values (git-ignored)
+- `.env` - Default values (committed)
+
+### Using Config in Services
+
+```typescript
+import { Injectable } from "@nestjs/common";
+import { AppConfigService } from "~/shared/config/app-config.service";
+
+@Injectable()
+export class SomeService {
+  constructor(private readonly config: AppConfigService) {}
+
+  doSomething() {
+    // Access via namespaces
+    const port = this.config.app.PORT; // Type: number
+    const env = this.config.app.NODE_ENV; // Type: Environment
+    const secret = this.config.auth.JWT_SECRET; // Type: string
+  }
+}
+```
 
 ### Adding New Config
 
-```typescript
-export type AppConfig = Readonly<{
-  port: number
-  nodeEnv: string
-  jwtSecret: string
-  // Add new config here
-  newFeature: {
-    enabled: boolean
-    apiKey: string
-  }
-}>
+1. Add property to schema in `src/shared/config/schemas/[namespace].config.schema.ts`
+2. Add validation decorators (`@IsString()`, `@IsNumber()`, etc.)
+3. Add to `loadConfig()` in `config.loader.ts`
+4. Update `.env.example`
+5. Update `CONFIG.md`
 
-export function loadAppConfig(): AppConfig {
-  return {
-    port: parseInt(process.env.PORT || '8000', 10),
-    nodeEnv: process.env.NODE_ENV || 'development',
-    jwtSecret: process.env.JWT_SECRET || 'dev-secret',
-    newFeature: {
-      enabled: process.env.NEW_FEATURE_ENABLED === 'true',
-      apiKey: process.env.NEW_FEATURE_API_KEY || '',
-    },
-  }
+**Example**: Adding a database URL to app namespace:
+
+```typescript
+// src/shared/config/schemas/app.config.schema.ts
+export class AppConfigSchema {
+  // ... existing properties ...
+
+  @IsUrl({ require_tld: false })
+  DATABASE_URL!: string;
 }
 ```
 
-### Using Config in Modules
-
-```typescript
-@Injectable()
-export class SomeService {
-  constructor(
-    @Inject('AppConfig') private readonly config: AppConfig,
-  ) {}
-
-  doSomething() {
-    if (this.config.newFeature.enabled) {
-      // Use feature
-    }
-  }
-}
-```
+For complete documentation including validation rules, environment file priority, production deployment, and troubleshooting, see **[CONFIG.md](./CONFIG.md)**.
 
 ---
 

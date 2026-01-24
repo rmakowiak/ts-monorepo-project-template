@@ -83,7 +83,11 @@ export function createExpiredToken(): string {
 
 /**
  * Generate an invalid token (wrong signature)
+ * Uses a different valid-length secret to create a token that will fail verification
  */
 export function createInvalidToken(): string {
-  return createTestToken(undefined, "wrong-secret");
+  return createTestToken(
+    undefined,
+    "wrong-secret-but-at-least-32-chars-long-for-validation",
+  );
 }

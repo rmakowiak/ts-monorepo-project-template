@@ -166,11 +166,11 @@ Authentication and security configuration.
 
 - **Description**: Secret key for JWT token signing
 - **Type**: String
-- **Minimum Length**: 32 characters (production requirement)
+- **Minimum Length**: 32 characters for security
 - **Default**: `dev-secret-change-in-production-at-least-32-chars` (development only, from DEFAULT_JWT_SECRET constant)
 - **Validation**:
-  - Must be at least 32 characters for security
-  - Validation enforced in all environments
+  - Must be at least 32 characters (enforced in **all environments**: development, production, test)
+  - Validation prevents application startup with weak secrets
 - **Security**: Use a cryptographically secure random string
 - **Generation**:
 

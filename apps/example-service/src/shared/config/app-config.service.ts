@@ -8,10 +8,19 @@ import type { ValidatedConfig } from "./config.loader";
  * Type-safe configuration service wrapper
  * Provides strongly-typed access to all configuration namespaces
  *
- * Usage:
- *   constructor(private config: AppConfigService) {}
- *   const port = this.config.app.PORT;
- *   const secret = this.config.auth.JWT_SECRET;
+ * All configuration objects are **immutable** (frozen) to prevent runtime modifications.
+ * Attempting to mutate config values will throw in strict mode or fail silently otherwise.
+ *
+ * @example
+ * ```typescript
+ * constructor(private config: AppConfigService) {}
+ *
+ * someMethod() {
+ *   const port = this.config.app.PORT;              // Type: number
+ *   const env = this.config.app.NODE_ENV;           // Type: Environment
+ *   const secret = this.config.auth.JWT_SECRET;     // Type: string
+ * }
+ * ```
  *
  * Adding new namespaces:
  *   1. Create new schema in schemas/[name].config.schema.ts

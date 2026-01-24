@@ -9,11 +9,32 @@ import { AuthConfigSchema } from "./schemas/auth.config.schema";
 import { DEFAULT_JWT_SECRET } from "./config.constants";
 
 /**
- * Combined configuration object returned by the loader
+ * Combined configuration object with all validated namespaces
+ *
+ * @remarks
+ * This type should only be created by `loadConfig()`, which ensures:
+ * - All schemas are validated against environment variables
+ * - The entire structure is deeply frozen (immutable)
+ * - Secrets are properly masked in logs
+ * - Validation errors include helpful context and file priority hints
+ *
+ * @example
+ * ```typescript
+ * // In a service
+ * constructor(private readonly config: AppConfigService) {}
+ *
+ * someMethod() {
+ *   const port = this.config.app.PORT;
+ *   const secret = this.config.auth.JWT_SECRET;
+ * }
+ * ```
+ *
+ * @see loadConfig
+ * @see AppConfigService
  */
 export interface ValidatedConfig {
-  app: AppConfigSchema;
-  auth: AuthConfigSchema;
+  readonly app: AppConfigSchema;
+  readonly auth: AuthConfigSchema;
 }
 
 /**
@@ -104,7 +125,10 @@ export function loadConfig(): ValidatedConfig {
     "AuthConfig",
   );
 
-  // Log loaded configuration (excluding secrets) in non-test environments
+  // Log loaded configuration (masking secrets) in non-test environments
+  // NOTE: Using console.log here instead of PinoLogger because this runs during
+  // bootstrap before the logger is initialized. This is a bootstrap-phase log.
+  // For application-level logging, use PinoLogger injected via DI.
   if (process.env.NODE_ENV !== "test") {
     const configSummary = {
       app: {
@@ -126,6 +150,7 @@ export function loadConfig(): ValidatedConfig {
   }
 
   // Warn if using default JWT secret in non-development environments
+  // NOTE: Using console.warn for bootstrap warnings (before logger initialization)
   if (
     authConfig.JWT_SECRET === DEFAULT_JWT_SECRET &&
     appConfig.NODE_ENV !== Environment.Development &&

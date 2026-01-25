@@ -38,33 +38,34 @@ apply_transform() {
       fi
 
       # Use sed to replace port values (macOS compatible)
+      # Pattern handles optional leading whitespace
       if [[ "$OSTYPE" == "darwin"* ]]; then
-        if ! sed -i '' "s/^PORT=.*/PORT=${port}/" "$file_path" 2>&1; then
+        if ! sed -i '' "s/^[[:space:]]*PORT=.*/PORT=${port}/" "$file_path" 2>&1; then
           echo "Error: Failed to update PORT in $file_path" >&2
           return 1
         fi
-        if ! sed -i '' "s/^OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>&1; then
+        if ! sed -i '' "s/^[[:space:]]*OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>&1; then
           echo "Error: Failed to update OTEL_METRICS_PORT in $file_path" >&2
           return 1
         fi
       else
-        if ! sed -i "s/^PORT=.*/PORT=${port}/" "$file_path" 2>&1; then
+        if ! sed -i "s/^[[:space:]]*PORT=.*/PORT=${port}/" "$file_path" 2>&1; then
           echo "Error: Failed to update PORT in $file_path" >&2
           return 1
         fi
-        if ! sed -i "s/^OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>&1; then
+        if ! sed -i "s/^[[:space:]]*OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>&1; then
           echo "Error: Failed to update OTEL_METRICS_PORT in $file_path" >&2
           return 1
         fi
       fi
 
-      # Verify the transformations actually happened
-      if ! grep -q "^PORT=${port}$" "$file_path"; then
+      # Verify the transformations actually happened (allow optional leading whitespace)
+      if ! grep -qE "^[[:space:]]*PORT=${port}$" "$file_path"; then
         echo "Error: PORT transformation verification failed in $file_path" >&2
         echo "Expected PORT=${port}, but it was not found" >&2
         return 1
       fi
-      if ! grep -q "^OTEL_METRICS_PORT=${otel_port}$" "$file_path"; then
+      if ! grep -qE "^[[:space:]]*OTEL_METRICS_PORT=${otel_port}$" "$file_path"; then
         echo "Error: OTEL_METRICS_PORT transformation verification failed in $file_path" >&2
         echo "Expected OTEL_METRICS_PORT=${otel_port}, but it was not found" >&2
         return 1

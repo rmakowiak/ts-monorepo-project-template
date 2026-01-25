@@ -4,11 +4,18 @@
     "example-service": {
       "files": [
         {
-          "source": ".env.local",
-          "destination": ".env.local",
+          "source": ".env",
+          "destination": ".env",
           "required": true,
           "transform": "update_ports",
-          "description": "Local environment configuration with ports"
+          "description": "Environment configuration with PORT and OTEL_METRICS_PORT"
+        },
+        {
+          "source": ".env.local",
+          "destination": ".env.local",
+          "required": false,
+          "transform": "update_ports",
+          "description": "Local environment configuration overrides"
         },
         {
           "source": "requests/http-client.env.json",

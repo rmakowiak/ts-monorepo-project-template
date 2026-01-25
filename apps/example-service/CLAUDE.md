@@ -481,7 +481,7 @@ When creating a worktree, the skill automatically:
 
 ### File Manifest
 
-The worktree skill uses a declarative manifest to know which files to copy. See `.claude/skills/worktree/config/file-manifest.json`:
+The worktree scripts uses a declarative manifest to know which files to copy. See `scripts/worktree/config/file-manifest.json`:
 
 ```json
 {
@@ -534,7 +534,7 @@ The worktree skill uses a declarative manifest to know which files to copy. See 
 echo "my-secret-key" > apps/example-service/.api-key
 
 # You MUST update the manifest
-vim .claude/skills/worktree/config/file-manifest.json
+vim scripts/worktree/config/file-manifest.json
 ```
 
 ```json
@@ -572,7 +572,7 @@ vim .claude/skills/worktree/config/file-manifest.json
 
 ### Available Commands
 
-See `.claude/skills/worktree/SKILL.md` for comprehensive documentation. Quick reference:
+See `scripts/worktree/README.md` for comprehensive documentation. Quick reference:
 
 ```bash
 # Create worktree
@@ -641,7 +641,7 @@ All worktrees share the same observability infrastructure:
 
 **File not copied to worktree:**
 
-- Check if it's in the manifest: `.claude/skills/worktree/config/file-manifest.json`
+- Check if it's in the manifest: `scripts/worktree/config/file-manifest.json`
 - Add it if needed (see "Maintaining the File Manifest" above)
 
 **Worktree out of sync:**
@@ -654,7 +654,7 @@ All worktrees share the same observability infrastructure:
 git worktree prune
 ```
 
-For more details, see `.claude/skills/worktree/SKILL.md`.
+For more details, see `scripts/worktree/README.md`.
 
 ---
 

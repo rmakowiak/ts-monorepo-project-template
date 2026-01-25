@@ -31,13 +31,43 @@ apply_transform() {
       local otel_port
       otel_port=$(get_port_value "$ports_json" "OTEL_METRICS_PORT")
 
+      # Verify port values are valid
+      if [[ -z "$port" ]] || [[ -z "$otel_port" ]]; then
+        echo "Error: Failed to extract port values from ports JSON" >&2
+        return 1
+      fi
+
       # Use sed to replace port values (macOS compatible)
       if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/^PORT=.*/PORT=${port}/" "$file_path" 2>/dev/null || true
-        sed -i '' "s/^OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>/dev/null || true
+        if ! sed -i '' "s/^PORT=.*/PORT=${port}/" "$file_path" 2>&1; then
+          echo "Error: Failed to update PORT in $file_path" >&2
+          return 1
+        fi
+        if ! sed -i '' "s/^OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>&1; then
+          echo "Error: Failed to update OTEL_METRICS_PORT in $file_path" >&2
+          return 1
+        fi
       else
-        sed -i "s/^PORT=.*/PORT=${port}/" "$file_path" 2>/dev/null || true
-        sed -i "s/^OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>/dev/null || true
+        if ! sed -i "s/^PORT=.*/PORT=${port}/" "$file_path" 2>&1; then
+          echo "Error: Failed to update PORT in $file_path" >&2
+          return 1
+        fi
+        if ! sed -i "s/^OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path" 2>&1; then
+          echo "Error: Failed to update OTEL_METRICS_PORT in $file_path" >&2
+          return 1
+        fi
+      fi
+
+      # Verify the transformations actually happened
+      if ! grep -q "^PORT=${port}$" "$file_path"; then
+        echo "Error: PORT transformation verification failed in $file_path" >&2
+        echo "Expected PORT=${port}, but it was not found" >&2
+        return 1
+      fi
+      if ! grep -q "^OTEL_METRICS_PORT=${otel_port}$" "$file_path"; then
+        echo "Error: OTEL_METRICS_PORT transformation verification failed in $file_path" >&2
+        echo "Expected OTEL_METRICS_PORT=${otel_port}, but it was not found" >&2
+        return 1
       fi
       ;;
 
@@ -45,12 +75,39 @@ apply_transform() {
       # Update baseUrl in JSON file
       local port
       port=$(get_port_value "$ports_json" "PORT")
+
+      if [[ -z "$port" ]]; then
+        echo "Error: Failed to extract PORT value for base URL update" >&2
+        return 1
+      fi
+
       local base_url="http://localhost:${port}"
+
+      # Validate input file is JSON
+      if ! jq empty "$file_path" 2>/dev/null; then
+        echo "Error: File is not valid JSON: $file_path" >&2
+        return 1
+      fi
 
       # Use jq to update the baseUrl
       local tmp_file="${file_path}.tmp"
-      jq ".dev.baseUrl = \"${base_url}\"" "$file_path" > "$tmp_file"
-      mv "$tmp_file" "$file_path"
+      if ! jq ".dev.baseUrl = \"${base_url}\"" "$file_path" > "$tmp_file" 2>&1; then
+        echo "Error: Failed to update baseUrl in $file_path" >&2
+        rm -f "$tmp_file"
+        return 1
+      fi
+
+      # Validate output is valid JSON
+      if ! jq empty "$tmp_file" 2>/dev/null; then
+        echo "Error: Transformation produced invalid JSON for $file_path" >&2
+        rm -f "$tmp_file"
+        return 1
+      fi
+
+      if ! mv "$tmp_file" "$file_path"; then
+        echo "Error: Failed to replace file: $file_path" >&2
+        return 1
+      fi
       ;;
 
     *)

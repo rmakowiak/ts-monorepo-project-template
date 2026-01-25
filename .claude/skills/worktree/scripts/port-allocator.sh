@@ -41,11 +41,25 @@ get_used_ports() {
 
   if [[ ! -f "$registry_path" ]]; then
     echo ""
-    return
+    return 0
   fi
 
-  # Extract all ports for the given port variable across all worktrees
-  jq -r ".worktrees[].apps[].ports.${port_var} // empty" "$registry_path" 2>/dev/null || echo ""
+  # Validate JSON before parsing
+  if ! jq empty "$registry_path" 2>/dev/null; then
+    echo "Error: Registry file is corrupted or contains invalid JSON: $registry_path" >&2
+    echo "Please check the file or delete it to reinitialize" >&2
+    return 1
+  fi
+
+  # Extract all ports for the given port variable
+  local used_ports
+  if ! used_ports=$(jq -r ".worktrees[].apps[].ports.${port_var} // empty" "$registry_path" 2>&1); then
+    echo "Error: Failed to extract used ports for $port_var from registry" >&2
+    echo "jq error: $used_ports" >&2
+    return 1
+  fi
+
+  echo "$used_ports"
 }
 
 # Check if a port is available on the system

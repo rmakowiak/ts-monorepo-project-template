@@ -70,6 +70,11 @@ update_registry() {
   local registry_path="$1"
   local worktree_entry="$2"
 
+  # Initialize registry if it doesn't exist
+  if [[ ! -f "$registry_path" ]]; then
+    echo '{"version": "1.0.0", "worktrees": []}' > "$registry_path"
+  fi
+
   local tmp_file="${registry_path}.tmp"
   jq ".worktrees += [$worktree_entry]" "$registry_path" > "$tmp_file"
   mv "$tmp_file" "$registry_path"
@@ -111,8 +116,28 @@ main() {
   echo "  Path: $worktree_path"
   echo ""
 
+  # Setup cleanup function for error handling
+  cleanup_on_error() {
+    local exit_code=$?
+    echo "" >&2
+    echo "Error occurred (exit code: $exit_code), cleaning up..." >&2
+
+    # Remove git worktree if it was created
+    if [[ -n "${worktree_path:-}" ]] && [[ -d "$worktree_path" ]]; then
+      echo "Removing worktree: $worktree_path" >&2
+      if git -C "$REPO_ROOT" worktree remove "$worktree_path" 2>&1; then
+        echo "Cleanup completed successfully" >&2
+      else
+        echo "Warning: Failed to remove worktree automatically" >&2
+        echo "Manual cleanup may be required: git worktree remove \"$worktree_path\"" >&2
+      fi
+    fi
+
+    exit 1
+  }
+
   # Setup cleanup trap
-  trap 'echo "Error occurred, cleaning up..."; git worktree remove "$worktree_path" 2>/dev/null || true; exit 1' ERR
+  trap cleanup_on_error ERR
 
   # Create git worktree
   echo "Creating git worktree..."
@@ -158,7 +183,14 @@ main() {
 
   # Install dependencies
   echo "Installing dependencies..."
-  (cd "$worktree_path" && pnpm install)
+  if ! (cd "$worktree_path" && pnpm install); then
+    echo "" >&2
+    echo "Error: Failed to install dependencies with pnpm" >&2
+    echo "Worktree was created but dependencies were not installed." >&2
+    echo "Cleaning up incomplete worktree..." >&2
+    git -C "$REPO_ROOT" worktree remove "$worktree_path" 2>&1 || true
+    exit 1
+  fi
   echo ""
 
   # Build registry entry

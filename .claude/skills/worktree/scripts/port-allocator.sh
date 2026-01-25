@@ -4,62 +4,51 @@
 
 set -euo pipefail
 
-# Get base port for a given port variable
-get_base_port() {
-  local port_var="$1"
-  case "$port_var" in
-    PORT)
-      echo "8000"
-      ;;
-    OTEL_METRICS_PORT)
-      echo "9464"
-      ;;
-    *)
-      echo "ERROR: Unknown port variable: $port_var" >&2
-      return 1
-      ;;
-  esac
+# Base ports
+BASE_PORT=8000
+OTEL_PORT=9464  # Shared across all worktrees
+
+# Get repo root
+get_repo_root() {
+  git rev-parse --show-toplevel 2>/dev/null || echo ""
 }
 
-# Get all port variable names
-get_port_variables() {
-  echo "PORT"
-  echo "OTEL_METRICS_PORT"
-}
-
-# Get the registry file path
-get_registry_path() {
-  local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  echo "$script_dir/../.worktree-registry.json"
-}
-
-# Get all used ports from the registry for a specific port variable
+# Get all used ports by reading .env.local files from all worktrees
 get_used_ports() {
-  local port_var="$1"
-  local registry_path
-  registry_path=$(get_registry_path)
+  local repo_root
+  repo_root=$(get_repo_root)
 
-  if [[ ! -f "$registry_path" ]]; then
+  if [[ -z "$repo_root" ]]; then
     echo ""
     return 0
   fi
 
-  # Validate JSON before parsing
-  if ! jq empty "$registry_path" 2>/dev/null; then
-    echo "Error: Registry file is corrupted or contains invalid JSON: $registry_path" >&2
-    echo "Please check the file or delete it to reinitialize" >&2
-    return 1
-  fi
+  local used_ports=()
 
-  # Extract all ports for the given port variable
-  local used_ports
-  if ! used_ports=$(jq -r ".worktrees[].apps[].ports.${port_var} // empty" "$registry_path" 2>&1); then
-    echo "Error: Failed to extract used ports for $port_var from registry" >&2
-    echo "jq error: $used_ports" >&2
-    return 1
-  fi
+  # Add base port (main repo)
+  used_ports+=("$BASE_PORT")
 
-  echo "$used_ports"
+  # Get all worktree paths
+  local worktree_paths
+  worktree_paths=$(git -C "$repo_root" worktree list --porcelain | grep "^worktree " | cut -d' ' -f2)
+
+  # Read PORT from each worktree's .env.local
+  while IFS= read -r worktree_path; do
+    [[ -z "$worktree_path" ]] && continue
+    [[ "$worktree_path" == "$repo_root" ]] && continue  # Skip main repo
+
+    local env_file="${worktree_path}/apps/example-service/.env.local"
+    if [[ -f "$env_file" ]]; then
+      local port
+      port=$(grep "^PORT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '\r\n ')
+      if [[ -n "$port" ]]; then
+        used_ports+=("$port")
+      fi
+    fi
+  done <<< "$worktree_paths"
+
+  # Return unique sorted ports
+  printf '%s\n' "${used_ports[@]}" | sort -n | uniq
 }
 
 # Check if a port is available on the system
@@ -74,21 +63,16 @@ is_port_available() {
   return 0  # Port available
 }
 
-# Find next available port for a given port variable
+# Find next available port
 find_next_port() {
-  local port_var="$1"
-  local base_port
-  base_port=$(get_base_port "$port_var")
-
-  # Get used ports from registry
   local used_ports
-  used_ports=$(get_used_ports "$port_var")
+  used_ports=$(get_used_ports)
 
   # Start from base_port + 1 (worktrees start at base+1)
-  local candidate_port=$((base_port + 1))
+  local candidate_port=$((BASE_PORT + 1))
 
   while true; do
-    # Check if port is in registry
+    # Check if port is used by any worktree
     if echo "$used_ports" | grep -q "^${candidate_port}$"; then
       candidate_port=$((candidate_port + 1))
       continue
@@ -105,19 +89,13 @@ find_next_port() {
   done
 }
 
-# Allocate all ports for an app
+# Allocate ports for an app
 allocate_ports_for_app() {
   local app_name="$1"
 
-  # Allocate each port type
-  local allocated_ports=()
-  while IFS= read -r port_var; do
-    local port
-    port=$(find_next_port "$port_var")
-    allocated_ports+=("\"$port_var\": $port")
-  done < <(get_port_variables)
+  local port
+  port=$(find_next_port)
 
-  # Return JSON object
-  local IFS=","
-  echo "{${allocated_ports[*]}}"
+  # Return JSON object with PORT and OTEL_METRICS_PORT
+  echo "{\"PORT\": $port, \"OTEL_METRICS_PORT\": $OTEL_PORT}"
 }

@@ -7,7 +7,7 @@ set -euo pipefail
 # Get the manifest file path
 get_manifest_path() {
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  echo "$script_dir/../config/file-manifest.json"
+  echo "$script_dir/config/file-manifest.json"
 }
 
 # Get port value from JSON

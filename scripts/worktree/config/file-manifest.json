@@ -13,7 +13,7 @@
         {
           "source": ".env.local",
           "destination": ".env.local",
-          "required": true,
+          "required": false,
           "transform": "update_ports",
           "description": "Local environment configuration overrides"
         },

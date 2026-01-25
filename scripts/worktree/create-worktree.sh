@@ -146,7 +146,7 @@ main() {
   echo ""
 
   # Get manifest to find apps
-  local manifest_path="$SCRIPT_DIR/../config/file-manifest.json"
+  local manifest_path="$SCRIPT_DIR/config/file-manifest.json"
   local apps
   apps=$(jq -r '.apps | keys[]' "$manifest_path")
 

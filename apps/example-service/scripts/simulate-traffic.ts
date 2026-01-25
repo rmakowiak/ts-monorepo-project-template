@@ -15,11 +15,15 @@
  * Options:
  *   --duration <minutes>  How long to run (default: 5)
  *   --rate <rps>          Requests per second (default: 5)
- *   --base-url <url>      Service URL (default: http://localhost:8000)
+ *   --base-url <url>      Service URL (default: reads PORT from .env)
  */
 
+import { config as loadEnv } from "dotenv";
 import { randomUUID } from "crypto";
 import * as jwt from "jsonwebtoken";
+
+// Load .env file to get PORT
+loadEnv();
 
 /**
  * Product response type
@@ -57,7 +61,8 @@ function generateAdminToken(): string {
 
 // Configuration
 const config = {
-  baseUrl: process.env.BASE_URL || "http://localhost:8000",
+  baseUrl:
+    process.env.BASE_URL || `http://localhost:${process.env.PORT || "8000"}`,
   duration: parseInt(process.env.DURATION || "5", 10), // minutes
   requestsPerSecond: parseInt(process.env.RATE || "5", 10),
   adminToken: generateAdminToken(),

@@ -28,13 +28,41 @@ sanitize_name() {
   echo "$1" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9_-]|-|g'
 }
 
-# Validate branch exists
-validate_branch() {
+# Validate or create branch
+validate_or_create_branch() {
   local branch="$1"
-  if ! git rev-parse --verify "$branch" >/dev/null 2>&1; then
-    echo "Error: Branch '$branch' does not exist" >&2
+
+  # Check if branch exists (local or remote)
+  if git rev-parse --verify "$branch" >/dev/null 2>&1; then
+    echo "Branch '$branch' exists, will use it"
+    return 0
+  fi
+
+  # Check if it exists as remote branch
+  if git rev-parse --verify "origin/$branch" >/dev/null 2>&1; then
+    echo "Branch 'origin/$branch' exists remotely, will use it"
+    return 0
+  fi
+
+  # Branch doesn't exist, create it from latest origin/main
+  echo "Branch '$branch' does not exist, creating from latest origin/main..."
+
+  # Fetch latest main
+  echo "  Fetching latest origin/main..."
+  if ! git fetch origin main; then
+    echo "Error: Failed to fetch origin/main" >&2
     return 1
   fi
+
+  # Create the branch
+  echo "  Creating branch '$branch' from origin/main..."
+  if ! git branch "$branch" origin/main; then
+    echo "Error: Failed to create branch '$branch'" >&2
+    return 1
+  fi
+
+  echo "✓ Branch '$branch' created successfully"
+  return 0
 }
 
 # Validate worktree name is available
@@ -73,9 +101,10 @@ main() {
   echo "Creating worktree..."
   echo "  Branch: $branch"
   echo "  Name: $worktree_name"
+  echo ""
 
   # Validate inputs
-  validate_branch "$branch" || exit 1
+  validate_or_create_branch "$branch" || exit 1
   validate_worktree_name "$worktree_name" || exit 1
 
   # Calculate paths

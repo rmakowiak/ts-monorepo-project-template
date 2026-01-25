@@ -10,6 +10,7 @@ This service is built with **clean architecture** (hexagonal architecture) using
 - [Module Structure](#module-structure)
 - [Dependency Flow](#dependency-flow)
 - [Logging Strategy](#logging-strategy)
+- [Development Workflow - Git Worktrees](#development-workflow---git-worktrees)
 - [How to Extend](#how-to-extend)
 - [Best Practices](#best-practices)
 - [Testing](#testing)
@@ -406,6 +407,256 @@ Logs are JSON in production for log aggregation:
 
 ---
 
+## Development Workflow - Git Worktrees
+
+This monorepo supports **git worktrees** for working on multiple branches simultaneously. The `/worktree` skill automates worktree creation with intelligent port allocation and environment setup.
+
+### Why Use Worktrees?
+
+**Problem**: Switching branches disrupts your development flow:
+
+- Loses running dev server state
+- Requires reinstalling dependencies if package.json changed
+- Can't compare behavior between branches easily
+
+**Solution**: Worktrees let you have multiple checkouts of the same repo:
+
+- Keep `main` running on port 8000 while developing on port 8001
+- Compare API behavior between branches side-by-side
+- Run tests on one branch while coding on another
+
+### Quick Start
+
+```bash
+# Create worktree for a feature branch
+/worktree create feat/new-api
+
+# Switch to the new worktree
+cd ../monorepo-project-template-feat-new-api
+
+# Start development server (automatically uses port 8001)
+cd apps/example-service
+pnpm dev
+
+# Work on your feature...
+
+# When done, return to main repo and close worktree
+cd /path/to/monorepo-project-template
+/worktree close feat-new-api
+```
+
+### Port Allocation Strategy
+
+Each worktree gets unique ports to avoid conflicts:
+
+| Worktree     | PORT | OTEL_METRICS_PORT | OTEL_EXPORTER_OTLP_ENDPOINT |
+| ------------ | ---- | ----------------- | --------------------------- |
+| Main repo    | 8000 | 9464              | http://localhost:4318       |
+| 1st worktree | 8001 | 9465              | http://localhost:4318       |
+| 2nd worktree | 8002 | 9466              | http://localhost:4318       |
+| 3rd worktree | 8003 | 9467              | http://localhost:4318       |
+
+**Note**: Infrastructure services (Jaeger, Prometheus, Grafana) run on shared ports and are **shared across all worktrees**.
+
+### Automatic Environment Setup
+
+When creating a worktree, the skill automatically:
+
+1. **Creates git worktree** as sibling directory
+2. **Allocates unique ports** from the registry
+3. **Copies important files** per manifest:
+   - `.env.local` (ports updated automatically)
+   - `requests/http-client.env.json` (baseUrl updated to new port)
+   - Any other tracked credential/config files
+4. **Transforms files** to use new ports
+5. **Installs dependencies** with `pnpm install`
+6. **Updates registry** to track worktree and prevent port collisions
+
+**Files NOT copied:**
+
+- `node_modules/` (always reinstalled)
+- Build output (`dist/`, `.next/`)
+- Git-tracked files (automatically present)
+
+### File Manifest
+
+The worktree skill uses a declarative manifest to know which files to copy. See `.claude/skills/worktree/config/file-manifest.json`:
+
+```json
+{
+  "version": "1.0.0",
+  "apps": {
+    "example-service": {
+      "files": [
+        {
+          "source": ".env.local",
+          "destination": ".env.local",
+          "required": false,
+          "transform": "update_ports",
+          "description": "Local environment configuration with ports"
+        },
+        {
+          "source": "requests/http-client.env.json",
+          "destination": "requests/http-client.env.json",
+          "required": false,
+          "transform": "update_base_url",
+          "description": "HTTP client JWT tokens and baseUrl"
+        }
+      ]
+    }
+  }
+}
+```
+
+### CRITICAL: Maintaining the File Manifest
+
+**IMPORTANT RULE**: When you add new untracked important files that should be copied to worktrees, you **MUST** update the file manifest.
+
+**Files to include:**
+
+- ✅ Environment configs (`.env.local`, `.env.test.local`)
+- ✅ Authentication tokens (`requests/http-client.env.json`)
+- ✅ Local credentials (`cookie.txt`, API keys, certificates)
+- ✅ Local test data or fixtures that aren't in git
+
+**Files to exclude:**
+
+- ❌ `node_modules/` (always excluded, reinstalled instead)
+- ❌ Build output (`dist/`, `.turbo/`, `.next/`)
+- ❌ IDE configs (`.vscode/`, `.idea/`)
+- ❌ Git-tracked files (automatically present in worktree)
+
+**Example**: Adding a new credential file
+
+```bash
+# You add a new local file
+echo "my-secret-key" > apps/example-service/.api-key
+
+# You MUST update the manifest
+vim .claude/skills/worktree/config/file-manifest.json
+```
+
+```json
+{
+  "version": "1.0.0",
+  "apps": {
+    "example-service": {
+      "files": [
+        {
+          "source": ".env.local",
+          "destination": ".env.local",
+          "required": false,
+          "transform": "update_ports",
+          "description": "Local environment configuration with ports"
+        },
+        {
+          "source": "requests/http-client.env.json",
+          "destination": "requests/http-client.env.json",
+          "required": false,
+          "transform": "update_base_url",
+          "description": "HTTP client JWT tokens and baseUrl"
+        },
+        {
+          "source": ".api-key",
+          "destination": ".api-key",
+          "required": false,
+          "transform": "none",
+          "description": "API key for external service"
+        }
+      ]
+    }
+  }
+}
+```
+
+### Available Commands
+
+See `.claude/skills/worktree/SKILL.md` for comprehensive documentation. Quick reference:
+
+```bash
+# Create worktree
+/worktree create <branch-name> [custom-name]
+
+# List all worktrees with their ports
+/worktree list
+
+# Close and cleanup worktree
+/worktree close <worktree-name> [--force]
+```
+
+### Common Workflows
+
+**Comparing branches:**
+
+```bash
+# Terminal 1: Run stable version
+cd apps/example-service
+pnpm dev  # Port 8000
+
+# Terminal 2: Create and run experimental version
+/worktree create feat/experiment
+cd ../monorepo-project-template-feat-experiment/apps/example-service
+pnpm dev  # Port 8001
+
+# Compare behavior
+curl localhost:8000/health  # Stable
+curl localhost:8001/health  # Experimental
+```
+
+**Working on multiple features:**
+
+```bash
+# Create worktrees for different features
+/worktree create feat/api-v2 api-v2
+/worktree create feat/auth-refactor auth-work
+
+# Switch between them as needed
+cd ../monorepo-project-template-api-v2
+cd ../monorepo-project-template-auth-work
+
+# List to see all active worktrees
+/worktree list
+```
+
+### Observability with Worktrees
+
+All worktrees share the same observability infrastructure:
+
+- **Jaeger** (http://localhost:16686) - View traces from all worktrees
+- **Prometheus** (http://localhost:9090) - Metrics aggregated from all ports
+- **Grafana** (http://localhost:3001) - Dashboards show all services
+
+**Tip**: Use service instance labels to differentiate:
+
+- Main repo traces tagged with `service.instance.id` including port 8000
+- Worktree traces tagged with port 8001, 8002, etc.
+
+### Troubleshooting
+
+**Port already in use:**
+
+- The skill automatically finds the next available port
+- Check which ports are allocated: `/worktree list`
+
+**File not copied to worktree:**
+
+- Check if it's in the manifest: `.claude/skills/worktree/config/file-manifest.json`
+- Add it if needed (see "Maintaining the File Manifest" above)
+
+**Worktree out of sync:**
+
+```bash
+# Force cleanup
+/worktree close worktree-name --force
+
+# Or manually prune
+git worktree prune
+```
+
+For more details, see `.claude/skills/worktree/SKILL.md`.
+
+---
+
 ## How to Extend
 
 ### Adding a New Module
@@ -693,7 +944,7 @@ export class AppConfigSchema {
 }
 
 // Then use via config service
-const dbUrl = this.config.app.DATABASE_URL;  // Type-safe, validated
+const dbUrl = this.config.app.DATABASE_URL; // Type-safe, validated
 ```
 
 **❌ Bad**: Don't read environment variables directly
@@ -703,10 +954,11 @@ const dbUrl = this.config.app.DATABASE_URL;  // Type-safe, validated
 const dbUrl = process.env.DATABASE_URL;
 
 // Bad - bypasses config validation
-const port = parseInt(process.env.PORT || '8000', 10);
+const port = parseInt(process.env.PORT || "8000", 10);
 ```
 
 **Why?**
+
 - Type safety and IntelliSense
 - Validation on startup (fails fast)
 - Centralized configuration management
@@ -714,6 +966,7 @@ const port = parseInt(process.env.PORT || '8000', 10);
 - Documentation in one place
 
 **Steps to add new environment variables:**
+
 1. Add to appropriate schema in `src/shared/config/schemas/[namespace].config.schema.ts`
 2. Add validation decorators (`@IsString()`, `@IsNumber()`, `@IsUrl()`, etc.)
 3. Add to `loadConfig()` in `config.loader.ts`
@@ -1411,7 +1664,7 @@ export class AppConfigSchema {
 }
 
 // Then use in services:
-const dbUrl = this.config.app.DATABASE_URL;  // ✅ Validated & type-safe
+const dbUrl = this.config.app.DATABASE_URL; // ✅ Validated & type-safe
 ```
 
 For complete documentation including validation rules, environment file priority, production deployment, and troubleshooting, see **[CONFIG.md](./CONFIG.md)**.

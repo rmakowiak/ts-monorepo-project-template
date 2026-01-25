@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "apps": {
+    "example-service": {
+      "files": [
+        {
+          "source": ".env.local",
+          "destination": ".env.local",
+          "required": false,
+          "transform": "update_ports",
+          "description": "Local environment configuration with ports"
+        },
+        {
+          "source": "requests/http-client.env.json",
+          "destination": "requests/http-client.env.json",
+          "required": false,
+          "transform": "update_base_url",
+          "description": "HTTP client JWT tokens and baseUrl"
+        }
+      ]
+    }
+  }
+}

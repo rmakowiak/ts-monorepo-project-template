@@ -1,21 +1,9 @@
----
+/---
 name: worktree
 version: 1.0.0
 description: Manage git worktrees with automatic environment setup
 author: Claude Code
-commands:
-  - name: create
-    description: Create a new worktree with port allocation and env setup
-    usage: /worktree:create <branch-name> [worktree-name]
-    script: scripts/create-worktree.sh
-  - name: close
-    description: Remove a worktree and cleanup registry
-    usage: /worktree:close <worktree-name> [--force]
-    script: scripts/close-worktree.sh
-  - name: list
-    description: List all active worktrees with their ports
-    usage: /worktree:list
-    script: scripts/list-worktrees.sh
+
 ---
 
 # Worktree Management Skill
@@ -34,7 +22,7 @@ Git worktrees allow you to work on multiple branches simultaneously without swit
 
 ## Commands
 
-### `/worktree:create <branch-name> [worktree-name]`
+### `/worktree/create <branch-name> [worktree-name]`
 
 Creates a new worktree from the specified branch with automatic environment setup.
 
@@ -56,15 +44,15 @@ Creates a new worktree from the specified branch with automatic environment setu
 
 ```bash
 # Create worktree from branch with auto-generated name
-/worktree:create feat/new-api
+/worktree/create feat/new-api
 # Creates: ../monorepo-project-template-feat-new-api/
 
 # Create worktree with custom name
-/worktree:create feat/new-api my-feature
+/worktree/create feat/new-api my-feature
 # Creates: ../monorepo-project-template-my-feature/
 
 # Create worktree from remote branch
-/worktree:create origin/bugfix/auth-issue
+/worktree/create origin/bugfix/auth-issue
 ```
 
 **Port allocation:**
@@ -73,7 +61,7 @@ Creates a new worktree from the specified branch with automatic environment setu
 - Second worktree: PORT=8002, OTEL_METRICS_PORT=9466
 - Continues incrementing...
 
-### `/worktree:close <worktree-name> [--force]`
+### `/worktree/close <worktree-name> [--force]`
 
 Removes a worktree and cleans up the registry.
 
@@ -94,10 +82,10 @@ Removes a worktree and cleans up the registry.
 
 ```bash
 # Close worktree (checks for uncommitted changes)
-/worktree:close feat-new-api
+/worktree/close feat-new-api
 
 # Force close even with uncommitted changes
-/worktree:close feat-new-api --force
+/worktree/close feat-new-api --force
 ```
 
 **Safety features:**
@@ -106,7 +94,7 @@ Removes a worktree and cleans up the registry.
 - Prevents closing if untracked files present (unless `--force`)
 - Automatically falls back to force removal if standard removal fails
 
-### `/worktree:list`
+### `/worktree/list`
 
 Lists all active worktrees with their configuration.
 
@@ -215,7 +203,7 @@ The registry (`.claude/skills/worktree/.worktree-registry.json`) tracks all work
 
 ```bash
 # Create worktree for feature branch
-/worktree:create feat/my-feature
+/worktree/create feat/my-feature
 
 # Switch to worktree
 cd ../monorepo-project-template-feat-my-feature
@@ -233,15 +221,15 @@ git push origin feat/my-feature
 
 # Return to main repo and close worktree
 cd /Users/username/workspace/monorepo-project-template
-/worktree:close feat-my-feature
+/worktree/close feat-my-feature
 ```
 
 ### Running multiple services simultaneously
 
 ```bash
 # Create two worktrees
-/worktree:create main main-stable
-/worktree:create feat/experiment
+/worktree/create main main-stable
+/worktree/create feat/experiment
 
 # Terminal 1: Run stable version on port 8001
 cd ../monorepo-project-template-main-stable/apps/example-service
@@ -260,7 +248,7 @@ curl localhost:8002/health  # Experimental version
 
 ```bash
 # Create worktree for testing
-/worktree:create feat/new-endpoint test-env
+/worktree/create feat/new-endpoint test-env
 
 # Configure with production-like data
 cd ../monorepo-project-template-test-env/apps/example-service
@@ -271,7 +259,7 @@ pnpm test
 
 # When done
 cd /Users/username/workspace/monorepo-project-template
-/worktree:close test-env
+/worktree/close test-env
 ```
 
 ## Configuration
@@ -284,7 +272,9 @@ To track files for a new app, update `.claude/skills/worktree/config/file-manife
 {
   "version": "1.0.0",
   "apps": {
-    "example-service": { ... },
+    "example-service": {
+      "files": []
+    },
     "new-service": {
       "files": [
         {
@@ -371,9 +361,9 @@ To add custom file transformations:
 
 **Solutions:**
 
-- List existing: `/worktree:list`
-- Choose different name: `/worktree:create branch custom-name`
-- Close old worktree: `/worktree:close existing-name`
+- List existing: `/worktree/list`
+- Choose different name: `/worktree/create branch custom-name`
+- Close old worktree: `/worktree/close existing-name`
 
 ### "Port already in use"
 
@@ -393,7 +383,7 @@ To add custom file transformations:
 
 - Commit changes: `cd worktree && git commit -am "Save work"`
 - Stash changes: `git stash`
-- Force close: `/worktree:close name --force` (loses changes!)
+- Force close: `/worktree/close name --force` (loses changes!)
 
 ### "Required file not found"
 
@@ -413,7 +403,7 @@ To add custom file transformations:
 
 ```bash
 # Force close to cleanup registry
-/worktree:close worktree-name --force
+/worktree/close worktree-name --force
 
 # Or manually prune
 git worktree prune
@@ -439,7 +429,7 @@ vim .claude/skills/worktree/.worktree-registry.json
 
 - **Disk space**: Each worktree includes full dependencies (`node_modules`). Monitor disk usage when creating many worktrees.
 
-- **Registry sync**: Registry is local to your machine. If you manually delete worktree directories, run `/worktree:close name --force` to clean up the registry.
+- **Registry sync**: Registry is local to your machine. If you manually delete worktree directories, run `/worktree/close name --force` to clean up the registry.
 
 - **Platform-specific**: Uses macOS `sed` syntax (`sed -i ''`). On Linux, use `sed -i` instead (edit `file-copier.sh`).
 

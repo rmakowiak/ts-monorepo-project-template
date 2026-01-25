@@ -429,7 +429,7 @@ This monorepo supports **git worktrees** for working on multiple branches simult
 
 ```bash
 # Create worktree for a feature branch
-/worktree:create feat/new-api
+/worktree/create feat/new-api
 
 # Switch to the new worktree
 cd ../monorepo-project-template-feat-new-api
@@ -442,7 +442,7 @@ pnpm dev
 
 # When done, return to main repo and close worktree
 cd /path/to/monorepo-project-template
-/worktree:close feat-new-api
+/worktree/close feat-new-api
 ```
 
 ### Port Allocation Strategy
@@ -575,13 +575,13 @@ See `.claude/skills/worktree/SKILL.md` for comprehensive documentation. Quick re
 
 ```bash
 # Create worktree
-/worktree:create <branch-name> [custom-name]
+/worktree/create <branch-name> [custom-name]
 
 # List all worktrees with their ports
-/worktree:list
+/worktree/list
 
 # Close and cleanup worktree
-/worktree:close <worktree-name> [--force]
+/worktree/close <worktree-name> [--force]
 ```
 
 ### Common Workflows
@@ -594,7 +594,7 @@ cd apps/example-service
 pnpm dev  # Port 8000
 
 # Terminal 2: Create and run experimental version
-/worktree:create feat/experiment
+/worktree/create feat/experiment
 cd ../monorepo-project-template-feat-experiment/apps/example-service
 pnpm dev  # Port 8001
 
@@ -607,15 +607,15 @@ curl localhost:8001/health  # Experimental
 
 ```bash
 # Create worktrees for different features
-/worktree:create feat/api-v2 api-v2
-/worktree:create feat/auth-refactor auth-work
+/worktree/create feat/api-v2 api-v2
+/worktree/create feat/auth-refactor auth-work
 
 # Switch between them as needed
 cd ../monorepo-project-template-api-v2
 cd ../monorepo-project-template-auth-work
 
 # List to see all active worktrees
-/worktree:list
+/worktree/list
 ```
 
 ### Observability with Worktrees
@@ -636,7 +636,7 @@ All worktrees share the same observability infrastructure:
 **Port already in use:**
 
 - The skill automatically finds the next available port
-- Check which ports are allocated: `/worktree:list`
+- Check which ports are allocated: `/worktree/list`
 
 **File not copied to worktree:**
 
@@ -647,7 +647,7 @@ All worktrees share the same observability infrastructure:
 
 ```bash
 # Force cleanup
-/worktree:close worktree-name --force
+/worktree/close worktree-name --force
 
 # Or manually prune
 git worktree prune

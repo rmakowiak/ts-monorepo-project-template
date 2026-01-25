@@ -432,7 +432,7 @@ This monorepo supports **git worktrees** for working on multiple branches simult
 /worktree create feat/new-api
 
 # Switch to the new worktree
-cd ../monorepo-project-template-feat-new-api
+cd ../monorepo-project-template.worktree.feat-new-api
 
 # Start development server (automatically uses port 8001)
 cd apps/example-service
@@ -470,7 +470,8 @@ When creating a worktree, the skill automatically:
    - Any other tracked credential/config files
 4. **Transforms files** to use new ports
 5. **Installs dependencies** with `pnpm install`
-6. **Updates registry** to track worktree and prevent port collisions
+6. **Builds the project** with `pnpm run build`
+7. **Updates registry** to track worktree and prevent port collisions
 
 **Files NOT copied:**
 
@@ -595,7 +596,7 @@ pnpm dev  # Port 8000
 
 # Terminal 2: Create and run experimental version
 /worktree create feat/experiment
-cd ../monorepo-project-template-feat-experiment/apps/example-service
+cd ../monorepo-project-template.worktree.feat-experiment/apps/example-service
 pnpm dev  # Port 8001
 
 # Compare behavior
@@ -611,8 +612,8 @@ curl localhost:8001/health  # Experimental
 /worktree create feat/auth-refactor auth-work
 
 # Switch between them as needed
-cd ../monorepo-project-template-api-v2
-cd ../monorepo-project-template-auth-work
+cd ../monorepo-project-template.worktree.api-v2
+cd ../monorepo-project-template.worktree.auth-work
 
 # List to see all active worktrees
 /worktree list

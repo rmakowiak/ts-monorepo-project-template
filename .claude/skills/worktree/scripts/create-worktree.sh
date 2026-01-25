@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
 
 # Source library scripts
 source "$SCRIPT_DIR/port-allocator.sh"
@@ -111,7 +111,7 @@ main() {
   parent_dir=$(dirname "$REPO_ROOT")
   local repo_name
   repo_name=$(basename "$REPO_ROOT")
-  local worktree_path="${parent_dir}/${repo_name}-${worktree_name}"
+  local worktree_path="${parent_dir}/${repo_name}.worktree.${worktree_name}"
 
   echo "  Path: $worktree_path"
   echo ""
@@ -187,6 +187,18 @@ main() {
     echo "" >&2
     echo "Error: Failed to install dependencies with pnpm" >&2
     echo "Worktree was created but dependencies were not installed." >&2
+    echo "Cleaning up incomplete worktree..." >&2
+    git -C "$REPO_ROOT" worktree remove "$worktree_path" 2>&1 || true
+    exit 1
+  fi
+  echo ""
+
+  # Build the project
+  echo "Building project..."
+  if ! (cd "$worktree_path" && pnpm run build); then
+    echo "" >&2
+    echo "Error: Failed to build project with pnpm" >&2
+    echo "Worktree was created and dependencies installed, but build failed." >&2
     echo "Cleaning up incomplete worktree..." >&2
     git -C "$REPO_ROOT" worktree remove "$worktree_path" 2>&1 || true
     exit 1

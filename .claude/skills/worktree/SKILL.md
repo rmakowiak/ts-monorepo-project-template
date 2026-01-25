@@ -1,21 +1,23 @@
----
+-/--
 name: worktree
 version: 1.0.0
 description: Manage git worktrees with automatic environment setup
 author: Claude Code
 commands:
-  - name: create
-    description: Create a new worktree with port allocation and env setup
-    usage: /worktree create <branch-name> [worktree-name]
-    script: scripts/create-worktree.sh
-  - name: close
-    description: Remove a worktree and cleanup registry
-    usage: /worktree close <worktree-name> [--force]
-    script: scripts/close-worktree.sh
-  - name: list
-    description: List all active worktrees with their ports
-    usage: /worktree list
-    script: scripts/list-worktrees.sh
+
+- name: create
+  description: Create a new worktree with port allocation and env setup
+  usage: /worktree create <branch-name> [worktree-name]
+  script: scripts/create-worktree.sh
+- name: close
+  description: Remove a worktree and cleanup registry
+  usage: /worktree close <worktree-name> [--force]
+  script: scripts/close-worktree.sh
+- name: list
+  description: List all active worktrees with their ports
+  usage: /worktree list
+  script: scripts/list-worktrees.sh
+
 ---
 
 # Worktree Management Skill
@@ -45,26 +47,28 @@ Creates a new worktree from the specified branch with automatic environment setu
 
 **What it does:**
 
-1. Creates git worktree as sibling directory (e.g., `../monorepo-project-template-feat-api`)
+1. Creates git worktree as sibling directory (e.g., `../monorepo-project-template.worktree.feat-new-api`)
 2. Allocates unique ports for each service (PORT, OTEL_METRICS_PORT)
 3. Copies environment files per manifest (`.env.local`, `http-client.env.json`)
 4. Transforms files (updates ports, base URLs)
 5. Runs `pnpm install` (does NOT copy node_modules)
-6. Updates registry with worktree info
+6. Runs `pnpm run build` to build the project
+7. Updates registry with worktree info
 
 **Examples:**
 
 ```bash
 # Create worktree from branch with auto-generated name
 /worktree create feat/new-api
-# Creates: ../monorepo-project-template-feat-new-api/
+# Creates: ../monorepo-project-template.worktree.feat-new-api/
 
 # Create worktree with custom name
 /worktree create feat/new-api my-feature
-# Creates: ../monorepo-project-template-my-feature/
+# Creates: ../monorepo-project-template.worktree.my-feature/
 
 # Create worktree from remote branch
 /worktree create origin/bugfix/auth-issue
+# Creates: ../monorepo-project-template.worktree.bugfix-auth-issue/
 ```
 
 **Port allocation:**
@@ -124,7 +128,7 @@ Active worktrees: 2
 
 [feat-new-api]
   Branch: feat/new-api
-  Path: /Users/username/workspace/monorepo-project-template-feat-new-api
+  Path: /Users/username/workspace/monorepo-project-template.worktree.feat-new-api
   Created: 2026-01-25T15:30:00Z
   Apps:
     example-service:
@@ -133,7 +137,7 @@ Active worktrees: 2
 
 [bugfix-auth]
   Branch: bugfix/auth-issue
-  Path: /Users/username/workspace/monorepo-project-template-bugfix-auth
+  Path: /Users/username/workspace/monorepo-project-template.worktree.bugfix-auth
   Created: 2026-01-25T16:45:00Z
   Apps:
     example-service:
@@ -192,7 +196,7 @@ The registry (`.claude/skills/worktree/.worktree-registry.json`) tracks all work
     {
       "name": "feat-new-api",
       "branch": "feat/new-api",
-      "path": "/Users/username/workspace/monorepo-project-template-feat-new-api",
+      "path": "/Users/username/workspace/monorepo-project-template.worktree.feat-new-api",
       "created": "2026-01-25T15:30:00Z",
       "apps": {
         "example-service": {
@@ -218,7 +222,7 @@ The registry (`.claude/skills/worktree/.worktree-registry.json`) tracks all work
 /worktree create feat/my-feature
 
 # Switch to worktree
-cd ../monorepo-project-template-feat-my-feature
+cd ../monorepo-project-template.worktree.feat-my-feature
 
 # Start development server (runs on PORT=8001)
 cd apps/example-service
@@ -244,11 +248,11 @@ cd /Users/username/workspace/monorepo-project-template
 /worktree create feat/experiment
 
 # Terminal 1: Run stable version on port 8001
-cd ../monorepo-project-template-main-stable/apps/example-service
+cd ../monorepo-project-template.worktree.main-stable/apps/example-service
 pnpm dev
 
 # Terminal 2: Run experimental version on port 8002
-cd ../monorepo-project-template-feat-experiment/apps/example-service
+cd ../monorepo-project-template.worktree.feat-experiment/apps/example-service
 pnpm dev
 
 # Compare behavior:
@@ -263,7 +267,7 @@ curl localhost:8002/health  # Experimental version
 /worktree create feat/new-endpoint test-env
 
 # Configure with production-like data
-cd ../monorepo-project-template-test-env/apps/example-service
+cd ../monorepo-project-template.worktree.test-env/apps/example-service
 # Edit .env.local with production-like settings
 
 # Run tests

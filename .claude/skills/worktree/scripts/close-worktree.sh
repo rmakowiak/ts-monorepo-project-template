@@ -4,42 +4,83 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-
-# Source library scripts
-source "$SCRIPT_DIR/port-allocator.sh"
 
 # Print usage
 usage() {
-  echo "Usage: $0 <worktree-name> [--force]"
+  echo "Usage: $0 [worktree-name-or-path] [--force]"
   echo ""
-  echo "Removes a git worktree and cleans up the registry."
+  echo "Removes a git worktree. If no worktree specified, closes the current one."
   echo ""
   echo "Arguments:"
-  echo "  worktree-name   Name of the worktree to close"
-  echo "  --force         Skip uncommitted changes check"
+  echo "  worktree-name-or-path   Optional: Name or path of worktree to close"
+  echo "                          If not provided, closes current worktree"
+  echo "  --force                 Skip uncommitted changes check"
   exit 1
 }
 
-# Get worktree info from registry
-get_worktree_info() {
-  local name="$1"
-  local registry_path="$2"
+# Get git repo root
+get_repo_root() {
+  git rev-parse --show-toplevel 2>/dev/null || echo ""
+}
 
-  if [[ ! -f "$registry_path" ]]; then
-    echo "Error: Registry not found at $registry_path" >&2
+# Get current worktree path (if we're in a worktree)
+get_current_worktree_path() {
+  local current_dir
+  current_dir=$(pwd)
+
+  local repo_root
+  repo_root=$(get_repo_root)
+
+  if [[ -z "$repo_root" ]]; then
+    echo ""
+    return 0
+  fi
+
+  # Get all worktree paths
+  local main_worktree
+  main_worktree=$(git -C "$repo_root" worktree list --porcelain | head -n 1 | cut -d' ' -f2)
+
+  # Check if we're not in the main worktree
+  if [[ "$repo_root" != "$main_worktree" ]]; then
+    echo "$repo_root"
+  else
+    echo ""
+  fi
+}
+
+# Find worktree path by name or use provided path
+find_worktree_path() {
+  local identifier="$1"
+
+  # If it's already a path that exists, use it
+  if [[ -d "$identifier" ]]; then
+    echo "$identifier"
+    return 0
+  fi
+
+  # Otherwise, try to find by name
+  local repo_root
+  repo_root=$(get_repo_root)
+
+  if [[ -z "$repo_root" ]]; then
+    echo "Error: Not in a git repository" >&2
     return 1
   fi
 
-  local info
-  info=$(jq -c ".worktrees[] | select(.name == \"$name\")" "$registry_path")
+  local parent_dir
+  parent_dir=$(dirname "$repo_root")
+  local repo_name
+  repo_name=$(basename "$(git -C "$repo_root" worktree list --porcelain | head -n 1 | cut -d' ' -f2)")
 
-  if [[ -z "$info" ]]; then
-    echo "Error: Worktree '$name' not found in registry" >&2
-    return 1
+  local worktree_path="${parent_dir}/${repo_name}.worktree.${identifier}"
+
+  if [[ -d "$worktree_path" ]]; then
+    echo "$worktree_path"
+    return 0
   fi
 
-  echo "$info"
+  echo "Error: Worktree not found: $identifier" >&2
+  return 1
 }
 
 # Check for uncommitted changes
@@ -74,79 +115,89 @@ check_uncommitted_changes() {
   return 0
 }
 
-# Remove worktree from registry
-remove_from_registry() {
-  local name="$1"
-  local registry_path="$2"
-
-  local tmp_file="${registry_path}.tmp"
-  jq "del(.worktrees[] | select(.name == \"$name\"))" "$registry_path" > "$tmp_file"
-  mv "$tmp_file" "$registry_path"
-}
 
 # Main function
 main() {
-  # Parse arguments
-  if [[ $# -lt 1 ]]; then
-    usage
-  fi
-
-  local worktree_name="$1"
+  local worktree_identifier=""
   local force="false"
 
-  if [[ "${2:-}" == "--force" ]]; then
-    force="true"
+  # Parse arguments
+  for arg in "$@"; do
+    if [[ "$arg" == "--force" ]]; then
+      force="true"
+    elif [[ -z "$worktree_identifier" ]]; then
+      worktree_identifier="$arg"
+    fi
+  done
+
+  # If no worktree specified, try to close current worktree
+  if [[ -z "$worktree_identifier" ]]; then
+    worktree_identifier=$(get_current_worktree_path)
+    if [[ -z "$worktree_identifier" ]]; then
+      echo "Error: Not in a worktree and no worktree specified" >&2
+      echo "Usage: $0 [worktree-name-or-path] [--force]" >&2
+      exit 1
+    fi
+    echo "Closing current worktree..."
+  else
+    echo "Closing worktree: $worktree_identifier"
   fi
-
-  local registry_path
-  registry_path=$(get_registry_path)
-
-  echo "Closing worktree: $worktree_name"
   echo ""
 
-  # Get worktree info
-  local worktree_info
-  worktree_info=$(get_worktree_info "$worktree_name" "$registry_path") || exit 1
-
+  # Find worktree path
   local worktree_path
-  worktree_path=$(echo "$worktree_info" | jq -r '.path')
+  worktree_path=$(find_worktree_path "$worktree_identifier") || exit 1
 
   echo "  Path: $worktree_path"
+
+  # Get repo root for git commands
+  local repo_root
+  repo_root=$(git -C "$worktree_path" rev-parse --show-toplevel 2>/dev/null)
+
+  # Get main worktree root
+  local main_repo_root
+  main_repo_root=$(git -C "$repo_root" worktree list --porcelain | head -n 1 | cut -d' ' -f2)
+
+  # Read allocated ports before removal (for display)
+  local port otel_port
+  local env_file="${worktree_path}/apps/example-service/.env.local"
+  if [[ -f "$env_file" ]]; then
+    port=$(grep "^PORT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '\r\n ')
+    otel_port=$(grep "^OTEL_METRICS_PORT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '\r\n ')
+  fi
 
   # Check for uncommitted changes
   if [[ -d "$worktree_path" ]]; then
     check_uncommitted_changes "$worktree_path" "$force" || exit 1
   fi
 
-  # Get ports before removal (for display)
-  local freed_ports
-  freed_ports=$(echo "$worktree_info" | jq -c '.apps')
-
   # Remove worktree
   echo ""
   echo "Removing worktree..."
   if [[ -d "$worktree_path" ]]; then
-    git -C "$REPO_ROOT" worktree remove "$worktree_path" 2>/dev/null || {
+    git -C "$main_repo_root" worktree remove "$worktree_path" 2>/dev/null || {
       # If remove fails, try with force
       echo "  Standard removal failed, forcing..."
-      git -C "$REPO_ROOT" worktree remove --force "$worktree_path"
+      git -C "$main_repo_root" worktree remove --force "$worktree_path"
     }
   else
-    echo "  Worktree directory not found, cleaning up registry only"
+    echo "  Worktree directory not found"
   fi
 
-  # Remove from registry
-  remove_from_registry "$worktree_name" "$registry_path"
-
   # Prune worktrees
-  git -C "$REPO_ROOT" worktree prune
+  git -C "$main_repo_root" worktree prune
 
   # Success message
   echo ""
   echo "✓ Worktree closed successfully!"
-  echo ""
-  echo "Freed ports:"
-  echo "$freed_ports" | jq -r 'to_entries[] | "  \(.key):\n\(.value.ports | to_entries[] | "    \(.key)=\(.value)")"'
+
+  if [[ -n "${port:-}" ]]; then
+    echo ""
+    echo "Freed ports:"
+    echo "  example-service:"
+    echo "    PORT=${port}"
+    [[ -n "${otel_port:-}" ]] && echo "    OTEL_METRICS_PORT=${otel_port}"
+  fi
 }
 
 main "$@"

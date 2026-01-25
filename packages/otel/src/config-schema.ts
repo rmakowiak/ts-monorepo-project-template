@@ -23,7 +23,15 @@ export enum TraceExporterType {
  * OpenTelemetry configuration schema
  * Validates observability settings for distributed tracing and metrics
  *
- * @see ../../../../packages/otel/README.md for detailed documentation
+ * @remarks
+ * This schema is used for:
+ * 1. Pre-validation in bootstrap (before OTel SDK initialization)
+ * 2. NestJS config system (via AppConfigService)
+ *
+ * All environment variables are validated with class-validator decorators
+ * and transformed to appropriate types.
+ *
+ * @see ../README.md for detailed documentation
  */
 export class OtelConfigSchema {
   /**
@@ -41,6 +49,7 @@ export class OtelConfigSchema {
    * Service version for observability
    * @default "1.0.0"
    */
+  @Transform(({ value }) => value || "1.0.0")
   @IsString()
   readonly OTEL_SERVICE_VERSION!: string;
 
@@ -72,6 +81,7 @@ export class OtelConfigSchema {
    * Trace exporter type
    * @default "otlp-http"
    */
+  @Transform(({ value }) => value || TraceExporterType.OtlpHttp)
   @IsEnum(TraceExporterType)
   readonly OTEL_TRACE_EXPORTER!: TraceExporterType;
 
@@ -95,7 +105,13 @@ export class OtelConfigSchema {
    */
   @Transform(({ value }) => {
     if (value === undefined || value === null || value === "") return 1.0;
-    return parseFloat(String(value));
+    const parsed = parseFloat(String(value));
+    if (isNaN(parsed)) {
+      throw new Error(
+        `OTEL_TRACE_SAMPLE_RATE must be a valid number (received: ${value})`,
+      );
+    }
+    return parsed;
   })
   @IsNumber()
   @Min(0, { message: "OTEL_TRACE_SAMPLE_RATE must be between 0.0 and 1.0" })
@@ -121,7 +137,13 @@ export class OtelConfigSchema {
    */
   @Transform(({ value }) => {
     if (value === undefined || value === null || value === "") return 9464;
-    return parseInt(String(value), 10);
+    const parsed = parseInt(String(value), 10);
+    if (isNaN(parsed)) {
+      throw new Error(
+        `OTEL_METRICS_PORT must be a valid integer (received: ${value})`,
+      );
+    }
+    return parsed;
   })
   @IsNumber()
   @Min(1, { message: "OTEL_METRICS_PORT must be between 1 and 65535" })

@@ -6,10 +6,6 @@ import {
   LogLevel,
 } from "./schemas/app.config.schema";
 import { AuthConfigSchema } from "./schemas/auth.config.schema";
-import {
-  OtelConfigSchema,
-  TraceExporterType,
-} from "./schemas/otel.config.schema";
 import { DEFAULT_JWT_SECRET } from "./config.constants";
 
 /**
@@ -39,7 +35,6 @@ import { DEFAULT_JWT_SECRET } from "./config.constants";
 export interface ValidatedConfig {
   readonly app: AppConfigSchema;
   readonly auth: AuthConfigSchema;
-  readonly otel: OtelConfigSchema;
 }
 
 /**
@@ -130,25 +125,6 @@ export function loadConfig(): ValidatedConfig {
     "AuthConfig",
   );
 
-  const otelConfig = loadAndValidateSchema(
-    OtelConfigSchema,
-    {
-      OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME || "example-service",
-      OTEL_SERVICE_VERSION: process.env.OTEL_SERVICE_VERSION || "1.0.0",
-      OTEL_ENABLED: process.env.OTEL_ENABLED,
-      OTEL_TRACING_ENABLED: process.env.OTEL_TRACING_ENABLED,
-      OTEL_TRACE_EXPORTER:
-        process.env.OTEL_TRACE_EXPORTER || TraceExporterType.OtlpHttp,
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
-        process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
-      OTEL_TRACE_SAMPLE_RATE: process.env.OTEL_TRACE_SAMPLE_RATE,
-      OTEL_METRICS_ENABLED: process.env.OTEL_METRICS_ENABLED,
-      OTEL_METRICS_PORT: process.env.OTEL_METRICS_PORT,
-      OTEL_RESOURCE_ATTRIBUTES: process.env.OTEL_RESOURCE_ATTRIBUTES,
-    },
-    "OtelConfig",
-  );
-
   // Log loaded configuration (masking secrets) in non-test environments
   // NOTE: Using console.log here instead of PinoLogger because this runs during
   // bootstrap before the logger is initialized. This is a bootstrap-phase log.
@@ -165,17 +141,6 @@ export function loadConfig(): ValidatedConfig {
           authConfig.JWT_SECRET === DEFAULT_JWT_SECRET
             ? "<using DEFAULT_JWT_SECRET>"
             : "<custom secret set>",
-      },
-      otel: {
-        OTEL_SERVICE_NAME: otelConfig.OTEL_SERVICE_NAME,
-        OTEL_ENABLED: otelConfig.OTEL_ENABLED,
-        OTEL_TRACING_ENABLED: otelConfig.OTEL_TRACING_ENABLED,
-        OTEL_TRACE_EXPORTER: otelConfig.OTEL_TRACE_EXPORTER,
-        OTEL_TRACE_SAMPLE_RATE: otelConfig.OTEL_TRACE_SAMPLE_RATE,
-        OTEL_METRICS_ENABLED: otelConfig.OTEL_METRICS_ENABLED,
-        OTEL_METRICS_PORT: otelConfig.OTEL_METRICS_PORT,
-        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
-          otelConfig.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || "<default>",
       },
     };
     console.log(
@@ -201,6 +166,5 @@ export function loadConfig(): ValidatedConfig {
   return Object.freeze({
     app: Object.freeze(appConfig),
     auth: Object.freeze(authConfig),
-    otel: Object.freeze(otelConfig),
   });
 }

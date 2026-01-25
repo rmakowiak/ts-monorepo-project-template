@@ -1,147 +1,134 @@
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { PrometheusExporter } from '@opentelemetry/exporter-prometheus'
-import { Resource } from '@opentelemetry/resources'
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
+import { Resource } from "@opentelemetry/resources";
 import {
-  SemanticResourceAttributes,
   SEMRESATTRS_SERVICE_NAME,
   SEMRESATTRS_SERVICE_VERSION,
   SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
-} from '@opentelemetry/semantic-conventions'
-import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base'
-import type { OtelConfig, TraceExporterType } from './types'
+} from "@opentelemetry/semantic-conventions";
+import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base";
+import { validateOtelConfig } from "./validate-config";
+import type { OtelConfigSchema } from "./config-schema";
 
 /**
- * Load OpenTelemetry configuration from environment variables
+ * Initialize OpenTelemetry SDK with automatic validation
+ *
+ * This function:
+ * 1. Reads OpenTelemetry config from process.env
+ * 2. Validates config using OtelConfigSchema
+ * 3. Initializes OpenTelemetry SDK
+ *
+ * @throws Error if validation fails with detailed error messages
+ *
+ * @example
+ * ```typescript
+ * // In main.ts (before NestFactory.create)
+ * import { initializeOtel } from '@monorepo/otel'
+ *
+ * initializeOtel()
+ * const app = await NestFactory.create(AppModule)
+ * ```
  */
-export function loadOtelConfig(): OtelConfig {
-  const serviceName = process.env.OTEL_SERVICE_NAME
-  if (!serviceName) {
-    throw new Error(
-      'OTEL_SERVICE_NAME environment variable is required for OpenTelemetry'
-    )
-  }
+export function initializeOtel(): void {
+  // Validate config from environment variables
+  const config = validateOtelConfig({
+    OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
+    OTEL_SERVICE_VERSION: process.env.OTEL_SERVICE_VERSION,
+    OTEL_ENABLED: process.env.OTEL_ENABLED,
+    OTEL_TRACING_ENABLED: process.env.OTEL_TRACING_ENABLED,
+    OTEL_TRACE_EXPORTER: process.env.OTEL_TRACE_EXPORTER,
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:
+      process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+    OTEL_TRACE_SAMPLE_RATE: process.env.OTEL_TRACE_SAMPLE_RATE,
+    OTEL_METRICS_ENABLED: process.env.OTEL_METRICS_ENABLED,
+    OTEL_METRICS_PORT: process.env.OTEL_METRICS_PORT,
+    OTEL_RESOURCE_ATTRIBUTES: process.env.OTEL_RESOURCE_ATTRIBUTES,
+  });
 
-  // Parse resource attributes from comma-separated key=value pairs
-  const parseResourceAttributes = (
-    attrString?: string
-  ): Record<string, string | number | boolean> => {
-    if (!attrString) return {}
-
-    const attributes: Record<string, string | number | boolean> = {}
-    attrString.split(',').forEach((pair) => {
-      const [key, value] = pair.split('=')
-      if (key && value) {
-        // Try to parse as number or boolean
-        if (value === 'true') attributes[key.trim()] = true
-        else if (value === 'false') attributes[key.trim()] = false
-        else if (!isNaN(Number(value))) attributes[key.trim()] = Number(value)
-        else attributes[key.trim()] = value.trim()
-      }
-    })
-    return attributes
-  }
-
-  return {
-    serviceName,
-    serviceVersion: process.env.OTEL_SERVICE_VERSION || '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    enabled: process.env.OTEL_ENABLED !== 'false',
-    tracing: {
-      enabled: process.env.OTEL_TRACING_ENABLED !== 'false',
-      exporter:
-        (process.env.OTEL_TRACE_EXPORTER as TraceExporterType) || 'otlp-http',
-      endpoint: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
-      sampleRate: parseFloat(process.env.OTEL_TRACE_SAMPLE_RATE || '1.0'),
-    },
-    metrics: {
-      enabled: process.env.OTEL_METRICS_ENABLED !== 'false',
-      port: parseInt(process.env.OTEL_METRICS_PORT || '9464', 10),
-    },
-    resource: {
-      attributes: parseResourceAttributes(process.env.OTEL_RESOURCE_ATTRIBUTES),
-    },
-  }
+  // Initialize SDK with validated config
+  const manager = new OtelSDKManager(config);
+  manager.initialize();
 }
 
 /**
  * OpenTelemetry SDK Manager
  * Handles initialization and lifecycle of the OpenTelemetry SDK
+ *
+ * @internal This class is used internally by initializeOtel()
  */
-export class OtelSDKManager {
-  private sdk?: NodeSDK
+class OtelSDKManager {
+  private sdk?: NodeSDK;
 
-  constructor(private readonly config: OtelConfig) {}
+  constructor(private readonly config: OtelConfigSchema) {}
 
   /**
    * Initialize and start the OpenTelemetry SDK
+   * @throws Error if SDK initialization fails (app should not start without telemetry)
    */
   initialize(): void {
-    if (!this.config.enabled) {
-      console.log('[OTel] OpenTelemetry is disabled')
-      return
+    if (!this.config.OTEL_ENABLED) {
+      console.log("[OTel] OpenTelemetry is disabled");
+      return;
     }
 
-    try {
-      // Create resource with service metadata
-      const resource = this.createResource()
+    // Create resource with service metadata
+    const resource = this.createResource();
 
-      // Create trace exporter
-      const traceExporter = this.createTraceExporter()
+    // Create trace exporter
+    const traceExporter = this.createTraceExporter();
 
-      // Create metric reader (Prometheus)
-      const metricReader = this.createMetricReader()
+    // Create metric reader (Prometheus)
+    const metricReader = this.createMetricReader();
 
-      // Create instrumentations
-      const instrumentations = getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false, // File system instrumentation is too noisy
+    // Create instrumentations
+    const instrumentations = getNodeAutoInstrumentations({
+      "@opentelemetry/instrumentation-fs": {
+        enabled: false, // File system instrumentation is too noisy
+      },
+      "@opentelemetry/instrumentation-http": {
+        enabled: true,
+        ignoreIncomingRequestHook: (req) => {
+          // Ignore health checks and metrics endpoints
+          const url = req.url || "";
+          return (
+            url.includes("/health") ||
+            url.includes("/metrics") ||
+            url.includes("/favicon.ico")
+          );
         },
-        '@opentelemetry/instrumentation-http': {
-          enabled: true,
-          ignoreIncomingRequestHook: (req) => {
-            // Ignore health checks and metrics endpoints
-            const url = req.url || ''
-            return (
-              url.includes('/health') ||
-              url.includes('/metrics') ||
-              url.includes('/favicon.ico')
-            )
-          },
-        },
-        '@opentelemetry/instrumentation-express': {
-          enabled: true,
-        },
-        '@opentelemetry/instrumentation-nestjs-core': {
-          enabled: true,
-        },
-      })
+      },
+      "@opentelemetry/instrumentation-express": {
+        enabled: true,
+      },
+      "@opentelemetry/instrumentation-nestjs-core": {
+        enabled: true,
+      },
+    });
 
-      // Initialize SDK
-      this.sdk = new NodeSDK({
-        resource,
-        traceExporter,
-        metricReader,
-        instrumentations,
-      })
+    // Initialize SDK
+    this.sdk = new NodeSDK({
+      resource,
+      traceExporter,
+      metricReader,
+      instrumentations,
+    });
 
-      this.sdk.start()
+    this.sdk.start();
 
-      console.log('[OTel] OpenTelemetry SDK initialized successfully')
-      console.log(`[OTel]   Service: ${this.config.serviceName}`)
-      console.log(`[OTel]   Version: ${this.config.serviceVersion}`)
-      console.log(`[OTel]   Environment: ${this.config.environment}`)
-      console.log(
-        `[OTel]   Tracing: ${this.config.tracing.enabled ? 'enabled' : 'disabled'} (${this.config.tracing.exporter})`
-      )
-      console.log(
-        `[OTel]   Metrics: ${this.config.metrics.enabled ? 'enabled' : 'disabled'} (port ${this.config.metrics.port})`
-      )
-    } catch (error) {
-      console.error('[OTel] Failed to initialize OpenTelemetry SDK:', error)
-      // Don't throw - allow app to start without telemetry
-    }
+    const environment = process.env.NODE_ENV || "development";
+
+    console.log("[OTel] OpenTelemetry SDK initialized successfully");
+    console.log(`[OTel]   Service: ${this.config.OTEL_SERVICE_NAME}`);
+    console.log(`[OTel]   Version: ${this.config.OTEL_SERVICE_VERSION}`);
+    console.log(`[OTel]   Environment: ${environment}`);
+    console.log(
+      `[OTel]   Tracing: ${this.config.OTEL_TRACING_ENABLED ? "enabled" : "disabled"} (${this.config.OTEL_TRACE_EXPORTER})`,
+    );
+    console.log(
+      `[OTel]   Metrics: ${this.config.OTEL_METRICS_ENABLED ? "enabled" : "disabled"} (port ${this.config.OTEL_METRICS_PORT})`,
+    );
   }
 
   /**
@@ -149,45 +136,73 @@ export class OtelSDKManager {
    */
   async shutdown(): Promise<void> {
     if (this.sdk) {
-      await this.sdk.shutdown()
-      console.log('[OTel] OpenTelemetry SDK shut down')
+      await this.sdk.shutdown();
+      console.log("[OTel] OpenTelemetry SDK shut down");
     }
+  }
+
+  /**
+   * Parse resource attributes from comma-separated key=value pairs
+   * @example "team=platform,region=us-east" → { team: "platform", region: "us-east" }
+   */
+  private parseResourceAttributes(
+    attrString?: string,
+  ): Record<string, string | number | boolean> {
+    if (!attrString) return {};
+
+    const attributes: Record<string, string | number | boolean> = {};
+    attrString.split(",").forEach((pair) => {
+      const [key, value] = pair.split("=");
+      if (key && value) {
+        // Try to parse as number or boolean
+        if (value === "true") attributes[key.trim()] = true;
+        else if (value === "false") attributes[key.trim()] = false;
+        else if (!isNaN(Number(value))) attributes[key.trim()] = Number(value);
+        else attributes[key.trim()] = value.trim();
+      }
+    });
+    return attributes;
   }
 
   /**
    * Create resource with service metadata and custom attributes
    */
   private createResource(): Resource {
+    const environment = process.env.NODE_ENV || "development";
+    const customAttributes = this.parseResourceAttributes(
+      this.config.OTEL_RESOURCE_ATTRIBUTES,
+    );
+
     return new Resource({
-      [SEMRESATTRS_SERVICE_NAME]: this.config.serviceName,
-      [SEMRESATTRS_SERVICE_VERSION]: this.config.serviceVersion,
-      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: this.config.environment,
-      ...this.config.resource.attributes,
-    })
+      [SEMRESATTRS_SERVICE_NAME]: this.config.OTEL_SERVICE_NAME,
+      [SEMRESATTRS_SERVICE_VERSION]: this.config.OTEL_SERVICE_VERSION,
+      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
+      ...customAttributes,
+    });
   }
 
   /**
    * Create trace exporter based on configuration
    */
   private createTraceExporter() {
-    if (!this.config.tracing.enabled) {
-      return new ConsoleSpanExporter() // No-op effectively
+    if (!this.config.OTEL_TRACING_ENABLED) {
+      return new ConsoleSpanExporter(); // No-op effectively
     }
 
-    switch (this.config.tracing.exporter) {
-      case 'otlp-http':
+    switch (this.config.OTEL_TRACE_EXPORTER) {
+      case "otlp-http":
         return new OTLPTraceExporter({
           url:
-            this.config.tracing.endpoint ||
-            'http://localhost:4318/v1/traces',
-        })
-      case 'console':
-        return new ConsoleSpanExporter()
+            this.config.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
+            "http://localhost:4318/v1/traces",
+        });
+      case "console":
+        return new ConsoleSpanExporter();
       default:
         console.warn(
-          `[OTel] Unknown trace exporter: ${this.config.tracing.exporter}, falling back to console`
-        )
-        return new ConsoleSpanExporter()
+          `[OTel] Unknown trace exporter: ${this.config.OTEL_TRACE_EXPORTER}, falling back to console`,
+        );
+        return new ConsoleSpanExporter();
     }
   }
 
@@ -195,13 +210,13 @@ export class OtelSDKManager {
    * Create Prometheus metric reader
    */
   private createMetricReader() {
-    if (!this.config.metrics.enabled) {
-      return undefined
+    if (!this.config.OTEL_METRICS_ENABLED) {
+      return undefined;
     }
 
     return new PrometheusExporter({
-      port: this.config.metrics.port,
-      endpoint: '/metrics',
-    })
+      port: this.config.OTEL_METRICS_PORT,
+      endpoint: "/metrics",
+    });
   }
 }

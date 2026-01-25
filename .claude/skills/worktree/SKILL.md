@@ -1,23 +1,21 @@
--/--
+---
 name: worktree
 version: 1.0.0
 description: Manage git worktrees with automatic environment setup
 author: Claude Code
 commands:
-
-- name: create
-  description: Create a new worktree with port allocation and env setup
-  usage: /worktree create <branch-name> [worktree-name]
-  script: scripts/create-worktree.sh
-- name: close
-  description: Remove a worktree and cleanup registry
-  usage: /worktree close <worktree-name> [--force]
-  script: scripts/close-worktree.sh
-- name: list
-  description: List all active worktrees with their ports
-  usage: /worktree list
-  script: scripts/list-worktrees.sh
-
+  - name: create
+    description: Create a new worktree with port allocation and env setup
+    usage: /worktree create <branch-name> [worktree-name]
+    script: scripts/create-worktree.sh
+  - name: close
+    description: Remove a worktree and cleanup registry
+    usage: /worktree close <worktree-name> [--force]
+    script: scripts/close-worktree.sh
+  - name: list
+    description: List all active worktrees with their ports
+    usage: /worktree list
+    script: scripts/list-worktrees.sh
 ---
 
 # Worktree Management Skill

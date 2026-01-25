@@ -57,3 +57,6 @@ yarn-error.log*
 # Development tools
 .ralph/
 /TODO.md
+
+# Worktree management (local machine state)
+.claude/skills/worktree/.worktree-registry.json

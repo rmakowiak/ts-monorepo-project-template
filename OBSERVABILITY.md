@@ -79,14 +79,41 @@ curl -X POST http://localhost:8000/products \
 
 1. Open http://localhost:3000
 2. Login: admin/admin (or browse anonymously)
-3. Look for **"Example Service - Observability Dashboard"** - automatically loaded!
-4. Dashboard includes:
-   - 📊 Request rate, duration percentiles (p50/p95/p99), error rate
-   - 🌐 HTTP status codes distribution, requests by endpoint
-   - 💻 CPU usage, memory usage, event loop lag
-   - 🔗 Direct links to Jaeger for trace exploration
+3. Look for **"Example Service - Comprehensive Observability Dashboard"** - automatically loaded!
+4. Dashboard includes comprehensive monitoring across 6 sections:
+
+   **Service Overview (RED Metrics)**:
+   - 📊 Request rate (req/sec)
+   - ⏱️ Duration percentiles (p50, p95, p99)
+   - ❌ Error rate (5xx) with color-coded thresholds
+
+   **HTTP Metrics**:
+   - 📈 HTTP status code distribution
+   - 🔤 Requests by HTTP method
+
+   **Request/Response Patterns**:
+   - 🎯 Request rate by endpoint (stacked view)
+   - 🐌 Top 10 slowest endpoints (p95 latency)
+   - ⚠️ Error rate by endpoint
+
+   **Resource Utilization**:
+   - 💻 Process CPU usage (with 70%/90% thresholds)
+   - 🧠 Memory usage (RSS + Heap)
+   - 🔄 Event loop lag
+   - 🔗 Active handles (resource leak detection)
+
+   **Error Tracking**:
+   - 🔴 Total error rate (4xx + 5xx)
+   - 📊 4xx vs 5xx breakdown
+   - 📋 Top error endpoints table
+
+   **Distributed Tracing**:
+   - 🔗 Direct links to Jaeger UI
+   - 📖 Trace correlation guide
+
 5. Datasources are pre-configured (Prometheus + Jaeger)
-6. Create additional custom dashboards as needed
+6. Dashboard auto-refreshes every 10 seconds
+7. Default time range: 1 hour (adjustable)
 
 **Logs with Trace Correlation**:
 

@@ -11,14 +11,14 @@ export interface TestAppOptions {
   useValidation?: boolean;
 
   /**
-   * Whether to use in-memory repositories (for integration tests)
+   * Whether to use in-memory repositories (for component tests)
    * @default true
    */
   useInMemoryRepositories?: boolean;
 }
 
 /**
- * Creates a NestJS application instance configured for E2E testing
+ * Creates a NestJS application instance configured for component testing
  * Applies the same configuration as main.ts (validation pipe, etc.)
  *
  * @param options - Configuration options for the test app
@@ -46,7 +46,7 @@ export async function createTestApp(
     imports: [AppModule],
   });
 
-  // Override repositories with in-memory implementations for integration tests
+  // Override repositories with in-memory implementations for component tests
   if (useInMemoryRepositories) {
     moduleBuilder
       .overrideProvider("ProductRepository")

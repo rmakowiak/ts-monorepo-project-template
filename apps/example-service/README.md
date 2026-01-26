@@ -77,9 +77,9 @@ pnpm build            # Build for production
 pnpm start            # Run production build
 
 # Testing
-pnpm test:unit        # Run unit tests (100% coverage)
-pnpm test:integration # Run integration tests (93%+ coverage)
-pnpm test:all         # Run all tests
+pnpm test:unit      # Run unit tests (100% coverage)
+pnpm test:component # Run component tests (93%+ coverage)
+pntml test:all         # Run all tests
 
 # Code Quality
 pnpm lint             # Run ESLint

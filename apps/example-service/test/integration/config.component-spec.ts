@@ -8,7 +8,7 @@ import {
   LogLevel,
 } from "~/shared/config/schemas/app.config.schema";
 
-describe("Configuration Integration Tests", () => {
+describe("Configuration Component Tests", () => {
   let app: INestApplication;
   const originalEnv = process.env;
 

@@ -446,12 +446,12 @@ describe("ProductService", () => {
 });
 ```
 
-### Integration Tests
+### Component Tests
 
-Integration tests use in-memory repositories (not real database):
+Component tests use in-memory repositories (not real database):
 
 ```typescript
-describe("Product API (Integration)", () => {
+describe("Product API (Component)", () => {
   let app: INestApplication;
 
   beforeAll(async () => {

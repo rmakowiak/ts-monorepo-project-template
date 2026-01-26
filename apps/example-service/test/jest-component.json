@@ -2,7 +2,7 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": "..",
   "testEnvironment": "node",
-  "testRegex": ".integration-spec.ts$",
+  "testRegex": ".component-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
@@ -21,6 +21,6 @@
     "!src/main.ts",
     "!src/**/*.module.ts"
   ],
-  "coverageDirectory": "../coverage-integration",
+  "coverageDirectory": "../coverage-component",
   "coverageReporters": ["text", "lcov", "html"]
 }

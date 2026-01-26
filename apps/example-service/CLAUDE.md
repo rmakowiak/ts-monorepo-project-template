@@ -1007,7 +1007,7 @@ This project follows a standardized testing taxonomy:
 
 - In-process tests with in-memory implementations
 - Test multiple units working together (controllers → services → repositories)
-- Located in `test/integration/` (legacy directory name, contains component tests)
+- Located in `test/component/`
 - No external dependencies (no real database)
 - Target: 93%+ coverage of HTTP layer
 - Run with: `pnpm test:component`
@@ -1035,7 +1035,7 @@ test/
 │   ├── mock-logger.factory.ts  # Mock PinoLogger
 │   ├── jwt.factory.ts          # JWT token generation
 │   └── test-app.factory.ts     # NestJS app factory
-├── integration/                 # Component tests (legacy dir name)
+├── component/                   # Component tests
 │   ├── product.component-spec.ts
 │   └── health.component-spec.ts
 └── jest-component.json          # Component test config
@@ -1281,7 +1281,7 @@ describe("JwtAuthGuard", () => {
 
 Component tests focus on **full HTTP request/response cycles** through the actual application.
 
-**Location**: `test/integration/*.component-spec.ts` (legacy directory name)
+**Location**: `test/component/*.component-spec.ts`
 
 **Setup:**
 
@@ -1548,7 +1548,7 @@ Unit tests enforce minimum thresholds:
 - Use ECP to identify test classes (valid/invalid scenarios)
 - Use BVA to test boundary conditions
 - Co-locate unit tests with source files
-- Put component tests in `test/integration/` (legacy directory name)
+- Put component tests in `test/component/`
 - Use test fixtures for reusable test data
 - Test error paths and edge cases
 - Mock external dependencies in unit tests

@@ -1,6 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { json, urlencoded } from "express";
 import { AppModule } from "~/app.module";
+import { AppConfigService } from "~/shared/config/app-config.service";
+import { createSecurityMiddleware } from "~/shared/security/security.middleware";
 import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
 
 export interface TestAppOptions {
@@ -44,7 +47,22 @@ export async function createTestApp(
 
   const moduleBuilder = Test.createTestingModule({
     imports: [AppModule],
+  }).compile();
+
+  const app = moduleFixture.createNestApplication();
+
+  // Get configuration
+  const config = app.get(AppConfigService);
+
+  // Apply Helmet security headers (same as main.ts)
+  const securityMiddleware = createSecurityMiddleware({
+    helmet: {
+      enabled: config.security.SECURITY_HELMET_ENABLED,
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    },
   });
+  securityMiddleware.forEach((middleware) => app.use(middleware));
 
   // Override repositories with in-memory implementations for integration tests
   if (useInMemoryRepositories) {
@@ -53,9 +71,24 @@ export async function createTestApp(
       .useClass(InMemoryProductRepository);
   }
 
-  const moduleFixture: TestingModule = await moduleBuilder.compile();
+  // Configure CORS (same as main.ts)
+  const corsOrigins = config.security.SECURITY_CORS_ORIGINS;
+  app.enableCors({
+    origin:
+      corsOrigins === "*" ? true : corsOrigins.split(",").map((o) => o.trim()),
+    credentials: true,
+  });
 
-  const app = moduleFixture.createNestApplication();
+  // Request body size limits (same as main.ts)
+  app.use(json({ limit: config.security.SECURITY_MAX_BODY_SIZE }));
+  app.use(
+    urlencoded({
+      extended: true,
+      limit: config.security.SECURITY_MAX_BODY_SIZE,
+    }),
+  );
+
+  const moduleFixture: TestingModule = await moduleBuilder.compile();
 
   // Apply same configuration as main.ts
   if (useValidation) {

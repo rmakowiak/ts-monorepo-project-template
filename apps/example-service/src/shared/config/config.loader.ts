@@ -6,6 +6,7 @@ import {
   LogLevel,
 } from "./schemas/app.config.schema";
 import { AuthConfigSchema } from "./schemas/auth.config.schema";
+import { SecurityConfigSchema } from "./schemas/security.config.schema";
 import { DatabaseConfigSchema } from "./schemas/database.config.schema";
 import { DEFAULT_JWT_SECRET } from "./config.constants";
 
@@ -36,6 +37,7 @@ import { DEFAULT_JWT_SECRET } from "./config.constants";
 export interface ValidatedConfig {
   readonly app: AppConfigSchema;
   readonly auth: AuthConfigSchema;
+  readonly security: SecurityConfigSchema;
   readonly database: DatabaseConfigSchema;
 }
 
@@ -127,6 +129,21 @@ export function loadConfig(): ValidatedConfig {
     "AuthConfig",
   );
 
+  const securityConfig = loadAndValidateSchema(
+    SecurityConfigSchema,
+    {
+      SECURITY_HELMET_ENABLED: process.env.SECURITY_HELMET_ENABLED || "true",
+      SECURITY_CORS_ORIGINS: process.env.SECURITY_CORS_ORIGINS || "*",
+      SECURITY_RATE_LIMIT_ENABLED:
+        process.env.SECURITY_RATE_LIMIT_ENABLED || "true",
+      SECURITY_RATE_LIMIT_TTL: process.env.SECURITY_RATE_LIMIT_TTL || "60000",
+      SECURITY_RATE_LIMIT_MAX_REQUESTS:
+        process.env.SECURITY_RATE_LIMIT_MAX_REQUESTS || "100",
+      SECURITY_MAX_BODY_SIZE: process.env.SECURITY_MAX_BODY_SIZE || "1048576",
+    },
+    "SecurityConfig",
+  );
+
   const databaseConfig = loadAndValidateSchema(
     DatabaseConfigSchema,
     {
@@ -188,6 +205,7 @@ export function loadConfig(): ValidatedConfig {
   return Object.freeze({
     app: Object.freeze(appConfig),
     auth: Object.freeze(authConfig),
+    security: Object.freeze(securityConfig),
     database: Object.freeze(databaseConfig),
   });
 }

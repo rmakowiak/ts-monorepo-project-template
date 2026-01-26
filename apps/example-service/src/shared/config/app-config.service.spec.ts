@@ -5,6 +5,7 @@ import { Environment, LogLevel } from "./schemas/app.config.schema";
 import type { ValidatedConfig } from "./config.loader";
 import type { AppConfigSchema } from "./schemas/app.config.schema";
 import type { AuthConfigSchema } from "./schemas/auth.config.schema";
+import type { SecurityConfigSchema } from "./schemas/security.config.schema";
 
 describe("AppConfigService", () => {
   let service: AppConfigService;
@@ -18,6 +19,15 @@ describe("AppConfigService", () => {
 
   const mockAuthConfig: AuthConfigSchema = {
     JWT_SECRET: "test-secret-at-least-32-characters-long",
+  };
+
+  const mockSecurityConfig: SecurityConfigSchema = {
+    SECURITY_HELMET_ENABLED: true,
+    SECURITY_CORS_ORIGINS: "*",
+    SECURITY_RATE_LIMIT_ENABLED: true,
+    SECURITY_RATE_LIMIT_TTL: 60000,
+    SECURITY_RATE_LIMIT_MAX_REQUESTS: 100,
+    SECURITY_MAX_BODY_SIZE: 1048576,
   };
 
   beforeEach(() => {
@@ -57,12 +67,14 @@ describe("AppConfigService", () => {
     it("should return all config namespaces", () => {
       mockConfigService.get
         .mockReturnValueOnce(mockAppConfig)
-        .mockReturnValueOnce(mockAuthConfig);
+        .mockReturnValueOnce(mockAuthConfig)
+        .mockReturnValueOnce(mockSecurityConfig);
 
       const result = service.all;
 
       expect(result.app).toEqual(mockAppConfig);
       expect(result.auth).toEqual(mockAuthConfig);
+      expect(result.security).toEqual(mockSecurityConfig);
     });
   });
 
@@ -98,15 +110,19 @@ describe("AppConfigService", () => {
     it("should call config service for each namespace", () => {
       mockConfigService.get
         .mockReturnValueOnce(mockAppConfig)
-        .mockReturnValueOnce(mockAuthConfig);
+        .mockReturnValueOnce(mockAuthConfig)
+        .mockReturnValueOnce(mockSecurityConfig);
 
       service.all;
 
-      expect(mockConfigService.get).toHaveBeenCalledTimes(2);
+      expect(mockConfigService.get).toHaveBeenCalledTimes(3);
       expect(mockConfigService.get).toHaveBeenCalledWith("app", {
         infer: true,
       });
       expect(mockConfigService.get).toHaveBeenCalledWith("auth", {
+        infer: true,
+      });
+      expect(mockConfigService.get).toHaveBeenCalledWith("security", {
         infer: true,
       });
     });
@@ -114,13 +130,15 @@ describe("AppConfigService", () => {
     it("should return complete config structure", () => {
       mockConfigService.get
         .mockReturnValueOnce(mockAppConfig)
-        .mockReturnValueOnce(mockAuthConfig);
+        .mockReturnValueOnce(mockAuthConfig)
+        .mockReturnValueOnce(mockSecurityConfig);
 
       const all = service.all;
 
       expect(all).toEqual({
         app: mockAppConfig,
         auth: mockAuthConfig,
+        security: mockSecurityConfig,
       });
     });
   });

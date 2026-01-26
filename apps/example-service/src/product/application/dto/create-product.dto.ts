@@ -6,6 +6,7 @@ import {
   MaxLength,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 
 export class CreateProductDto {
   @ApiProperty({
@@ -15,6 +16,7 @@ export class CreateProductDto {
   })
   @IsString()
   @MaxLength(100)
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   name!: string;
 
   @ApiProperty({
@@ -24,6 +26,7 @@ export class CreateProductDto {
   })
   @IsString()
   @MaxLength(500)
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   description!: string;
 
   @ApiProperty({
@@ -33,6 +36,7 @@ export class CreateProductDto {
   })
   @IsString()
   @MaxLength(50)
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   sku!: string;
 
   @ApiProperty({

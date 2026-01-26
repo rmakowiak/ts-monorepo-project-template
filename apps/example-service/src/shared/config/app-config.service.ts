@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AppConfigSchema } from "./schemas/app.config.schema";
 import type { AuthConfigSchema } from "./schemas/auth.config.schema";
+import type { SecurityConfigSchema } from "./schemas/security.config.schema";
 import type { DatabaseConfigSchema } from "./schemas/database.config.schema";
 import type { ValidatedConfig } from "./config.loader";
 
@@ -58,6 +59,16 @@ export class AppConfigService {
   }
 
   /**
+   * Security configuration namespace
+   * Contains: SECURITY_HELMET_ENABLED, SECURITY_CORS_ORIGINS,
+   *           SECURITY_RATE_LIMIT_ENABLED, SECURITY_RATE_LIMIT_TTL,
+   *           SECURITY_RATE_LIMIT_MAX_REQUESTS, SECURITY_MAX_BODY_SIZE
+   */
+  get security(): SecurityConfigSchema {
+    return this.configService.get("security", { infer: true });
+  }
+
+  /**
    * Get entire configuration object (for debugging)
    */
   get all(): ValidatedConfig {
@@ -65,6 +76,7 @@ export class AppConfigService {
       app: this.app,
       auth: this.auth,
       database: this.database,
+      security: this.security,
     };
   }
 }

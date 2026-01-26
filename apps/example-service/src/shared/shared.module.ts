@@ -4,6 +4,7 @@ import { LoggerModule } from "nestjs-pino";
 import { createPinoOtelMixin } from "@monorepo/otel";
 import { loadConfig } from "./config/config.loader";
 import { AppConfigService } from "./config/app-config.service";
+import { SecurityModule } from "./security/security.module";
 import type { ValidatedConfig } from "./config/config.loader";
 import { Environment } from "./config/schemas/app.config.schema";
 
@@ -16,6 +17,7 @@ import { Environment } from "./config/schemas/app.config.schema";
       envFilePath: [".env.local", ".env.production", ".env"],
       load: [loadConfig],
     }),
+    SecurityModule,
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService<ValidatedConfig, true>) => {

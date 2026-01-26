@@ -33,10 +33,9 @@ describe("Health API (Component)", () => {
       const response = await request(app.getHttpServer()).get("/health");
 
       // Assert - Should have info or details properties (structure may vary based on status)
-      const hasHealthData =
-        response.body.hasOwnProperty("info") ||
-        response.body.hasOwnProperty("details") ||
-        response.body.hasOwnProperty("error");
+      const hasHealthData = ["info", "details", "error"].some((key) =>
+        response.body.hasOwnProperty(key),
+      );
       expect(hasHealthData).toBe(true);
     });
 
@@ -47,11 +46,10 @@ describe("Health API (Component)", () => {
       // Assert - Should have health check structure
       expect(response.body).toHaveProperty("status");
       // Either info (healthy) or error (unhealthy) should be present
-      const hasIndicators =
-        (response.body.info && Object.keys(response.body.info).length > 0) ||
-        (response.body.details &&
-          Object.keys(response.body.details).length > 0) ||
-        (response.body.error && Object.keys(response.body.error).length > 0);
+      const hasIndicators = ["info", "details", "error"].some(
+        (key) =>
+          response.body[key] && Object.keys(response.body[key]).length > 0,
+      );
       expect(hasIndicators).toBe(true);
     });
   });

@@ -7,7 +7,7 @@
  * - Auto-instrumentation for HTTP, Express, NestJS, databases
  * - OTLP trace export to Jaeger/Tempo
  * - Prometheus metrics endpoint
- * - Pino logger component with trace ID injection
+ * - Pino logger integration with trace ID injection
  * - Helper functions for custom span attributes and events
  * - Internal configuration validation (no app-side config needed)
  *

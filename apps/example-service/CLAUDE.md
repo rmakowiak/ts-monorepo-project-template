@@ -993,37 +993,27 @@ This service uses a **comprehensive, strategic testing approach** with separate 
 
 ### Testing Taxonomy
 
-This project follows a standardized testing taxonomy:
-
 **1. Unit Tests** (`*.spec.ts`)
 
-- Test individual functions/classes in isolation
+- Test individual functions/classes in isolation with mocked dependencies
 - Co-located with source files in `src/`
-- Use mocked dependencies
 - Target: 100% coverage of business logic
-- Run with: `pnpm test:unit`
+- Command: `pnpm test:unit`
 
 **2. Component Tests** (`*.component-spec.ts`)
 
-- In-process tests with in-memory implementations
-- Test multiple units working together (controllers → services → repositories)
-- Located in `test/component/`
-- No external dependencies (no real database)
+- In-process HTTP tests with in-memory implementations (controllers → services → repositories)
+- Located in `test/component/` with no external dependencies
 - Target: 93%+ coverage of HTTP layer
-- Run with: `pnpm test:component`
+- Command: `pnpm test:component`
 
 **3. E2E Tests** (future)
 
-- Black-box tests with real database
-- Black-box testing with real database and external services
-- Run in CI/CD pipeline
-- Not yet implemented
+- Black-box testing with real database and external services in CI/CD pipeline
 
 **4. Smoke Tests** (future)
 
-- Post-deployment verification
-- Run against production/staging environments
-- Not yet implemented
+- Post-deployment verification against production/staging environments
 
 ### Test Structure
 

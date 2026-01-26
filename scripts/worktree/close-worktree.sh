@@ -115,6 +115,50 @@ check_uncommitted_changes() {
   return 0
 }
 
+# Cleanup worktree databases
+cleanup_worktree_databases() {
+  local worktree_path="$1"
+
+  # Check if Docker postgres container is running
+  if ! docker ps --filter "name=postgres" --format "{{.Names}}" | grep -q "^postgres$"; then
+    echo "  Note: PostgreSQL container not running, skipping database cleanup"
+    return 0
+  fi
+
+  # Extract worktree name from path
+  # Path format: /path/to/monorepo-project-template.worktree.feat-branch-name
+  local worktree_name
+  worktree_name=$(basename "$worktree_path" | sed 's/.*\.worktree\.//')
+
+  # Transform to database suffix
+  local db_suffix
+  db_suffix=$(echo "$worktree_name" | sed 's/-/_/g')
+
+  # Database name
+  local dev_db="example_dev_${db_suffix}"
+
+  # Check if database exists
+  if ! docker exec postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "$dev_db"; then
+    return 0
+  fi
+
+  echo ""
+  echo "Found database: $dev_db"
+  read -p "Drop this database? [y/N] " -n 1 -r
+  echo
+
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "  Dropping database: $dev_db"
+    if docker exec postgres psql -U postgres -c "DROP DATABASE IF EXISTS ${dev_db};" >/dev/null 2>&1; then
+      echo "  ✓ Database dropped"
+    else
+      echo "  Warning: Failed to drop database $dev_db" >&2
+    fi
+  else
+    echo "  Keeping database: $dev_db"
+    echo "  To drop manually: docker exec postgres psql -U postgres -c \"DROP DATABASE ${dev_db};\""
+  fi
+}
 
 # Main function
 main() {
@@ -170,6 +214,9 @@ main() {
   if [[ -d "$worktree_path" ]]; then
     check_uncommitted_changes "$worktree_path" "$force" || exit 1
   fi
+
+  # Cleanup databases
+  cleanup_worktree_databases "$worktree_path"
 
   # Remove worktree
   echo ""

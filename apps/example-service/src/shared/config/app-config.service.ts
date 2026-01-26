@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AppConfigSchema } from "./schemas/app.config.schema";
 import type { AuthConfigSchema } from "./schemas/auth.config.schema";
+import type { DatabaseConfigSchema } from "./schemas/database.config.schema";
 import type { ValidatedConfig } from "./config.loader";
 
 /**
@@ -49,12 +50,21 @@ export class AppConfigService {
   }
 
   /**
+   * Database configuration namespace
+   * Contains: DATABASE_URL, REDIS_URL, DATABASE_LOGGING
+   */
+  get database(): DatabaseConfigSchema {
+    return this.configService.get("database", { infer: true });
+  }
+
+  /**
    * Get entire configuration object (for debugging)
    */
   get all(): ValidatedConfig {
     return {
       app: this.app,
       auth: this.auth,
+      database: this.database,
     };
   }
 }

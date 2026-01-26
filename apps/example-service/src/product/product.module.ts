@@ -3,7 +3,7 @@ import { SharedModule } from "~/shared/shared.module";
 import { AuthModule } from "~/auth/auth.module";
 import { ProductController } from "./inbound/product.controller";
 import { ProductService } from "./application/product.service";
-import { InMemoryProductRepository } from "./outbound/adapters/in-memory-product.repository";
+import { PrismaProductRepository } from "./outbound/adapters/prisma-product.repository";
 
 @Module({
   imports: [SharedModule, AuthModule],
@@ -12,7 +12,7 @@ import { InMemoryProductRepository } from "./outbound/adapters/in-memory-product
     ProductService,
     {
       provide: "ProductRepository",
-      useClass: InMemoryProductRepository,
+      useClass: PrismaProductRepository,
     },
   ],
   exports: [ProductService],

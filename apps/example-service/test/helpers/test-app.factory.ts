@@ -1,13 +1,20 @@
-import { Test, TestingModule } from '@nestjs/testing'
-import { INestApplication, ValidationPipe } from '@nestjs/common'
-import { AppModule } from '~/app.module'
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { AppModule } from "~/app.module";
+import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
 
 export interface TestAppOptions {
   /**
    * Whether to apply global validation pipe
    * @default true
    */
-  useValidation?: boolean
+  useValidation?: boolean;
+
+  /**
+   * Whether to use in-memory repositories (for integration tests)
+   * @default true
+   */
+  useInMemoryRepositories?: boolean;
 }
 
 /**
@@ -30,14 +37,25 @@ export interface TestAppOptions {
  * })
  * ```
  */
-export async function createTestApp(options: TestAppOptions = {}): Promise<INestApplication> {
-  const { useValidation = true } = options
+export async function createTestApp(
+  options: TestAppOptions = {},
+): Promise<INestApplication> {
+  const { useValidation = true, useInMemoryRepositories = true } = options;
 
-  const moduleFixture: TestingModule = await Test.createTestingModule({
+  const moduleBuilder = Test.createTestingModule({
     imports: [AppModule],
-  }).compile()
+  });
 
-  const app = moduleFixture.createNestApplication()
+  // Override repositories with in-memory implementations for integration tests
+  if (useInMemoryRepositories) {
+    moduleBuilder
+      .overrideProvider("ProductRepository")
+      .useClass(InMemoryProductRepository);
+  }
+
+  const moduleFixture: TestingModule = await moduleBuilder.compile();
+
+  const app = moduleFixture.createNestApplication();
 
   // Apply same configuration as main.ts
   if (useValidation) {
@@ -50,10 +68,10 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<INest
           enableImplicitConversion: true,
         },
       }),
-    )
+    );
   }
 
-  await app.init()
+  await app.init();
 
-  return app
+  return app;
 }

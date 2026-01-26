@@ -22,6 +22,7 @@ apply_transform() {
   local transform_type="$1"
   local file_path="$2"
   local ports_json="$3"
+  local worktree_name="$4"
 
   case "$transform_type" in
     update_ports)
@@ -72,6 +73,41 @@ apply_transform() {
       fi
       ;;
 
+    update_env_vars)
+      # Combined transformation: update ports AND database URL
+      # First, update ports
+      local port
+      port=$(get_port_value "$ports_json" "PORT")
+      local otel_port
+      otel_port=$(get_port_value "$ports_json" "OTEL_METRICS_PORT")
+
+      if [[ -z "$port" ]] || [[ -z "$otel_port" ]]; then
+        echo "Error: Failed to extract port values from ports JSON" >&2
+        return 1
+      fi
+
+      # Update ports
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/^[[:space:]]*PORT=.*/PORT=${port}/" "$file_path"
+        sed -i '' "s/^[[:space:]]*OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path"
+      else
+        sed -i "s/^[[:space:]]*PORT=.*/PORT=${port}/" "$file_path"
+        sed -i "s/^[[:space:]]*OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path"
+      fi
+
+      # Update DATABASE_URL if worktree_name is provided
+      if [[ -n "$worktree_name" ]]; then
+        local db_suffix
+        db_suffix=$(echo "$worktree_name" | sed 's/-/_/g')
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          sed -i '' -E "s|(^[[:space:]]*DATABASE_URL=postgresql://[^/]+/)([^?]+)|\1\2_${db_suffix}|" "$file_path"
+        else
+          sed -i -E "s|(^[[:space:]]*DATABASE_URL=postgresql://[^/]+/)([^?]+)|\1\2_${db_suffix}|" "$file_path"
+        fi
+      fi
+      ;;
+
     update_base_url)
       # Update baseUrl in JSON file
       local port
@@ -111,6 +147,36 @@ apply_transform() {
       fi
       ;;
 
+    update_database_url)
+      # Transform DATABASE_URL to include worktree name
+      # Example: postgresql://.../ example_dev → postgresql://.../ example_dev_feat_branch_name
+      if [[ -z "$worktree_name" ]]; then
+        echo "Error: worktree_name required for update_database_url transform" >&2
+        return 1
+      fi
+
+      # Transform worktree name: feat-add-databases → feat_add_databases (replace - with _)
+      local db_suffix
+      db_suffix=$(echo "$worktree_name" | sed 's/-/_/g')
+
+      # Use sed to transform DATABASE_URL
+      # Pattern: postgresql://...@host:port/database_name?schema=...
+      # Replace database_name with database_name_worktree_suffix
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS sed (BSD version)
+        if ! sed -i '' -E "s|(^[[:space:]]*DATABASE_URL=postgresql://[^/]+/)([^?]+)|\1\2_${db_suffix}|" "$file_path" 2>&1; then
+          echo "Error: Failed to update DATABASE_URL in $file_path" >&2
+          return 1
+        fi
+      else
+        # Linux sed (GNU version)
+        if ! sed -i -E "s|(^[[:space:]]*DATABASE_URL=postgresql://[^/]+/)([^?]+)|\1\2_${db_suffix}|" "$file_path" 2>&1; then
+          echo "Error: Failed to update DATABASE_URL in $file_path" >&2
+          return 1
+        fi
+      fi
+      ;;
+
     *)
       echo "Warning: Unknown transform type: $transform_type" >&2
       ;;
@@ -123,6 +189,7 @@ copy_app_files() {
   local source_root="$2"
   local dest_root="$3"
   local ports_json="$4"
+  local worktree_name="${5:-}"
 
   local manifest_path
   manifest_path=$(get_manifest_path)
@@ -183,7 +250,7 @@ copy_app_files() {
 
     # Apply transformation if specified
     if [[ "$transform" != "none" && "$transform" != "null" ]]; then
-      apply_transform "$transform" "$dest_path" "$ports_json"
+      apply_transform "$transform" "$dest_path" "$ports_json" "$worktree_name"
       echo "    Applied transform: $transform"
     fi
 

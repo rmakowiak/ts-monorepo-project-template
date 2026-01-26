@@ -1,9 +1,11 @@
 import { Controller, Get } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { SkipThrottle } from "@nestjs/throttler";
 import { Public } from "~/auth/decorators/public.decorator";
 
 @ApiTags("root")
 @Controller()
+@SkipThrottle()
 export class AppController {
   @Get()
   @Public()

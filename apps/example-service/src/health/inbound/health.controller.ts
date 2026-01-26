@@ -7,13 +7,15 @@ import {
   MemoryHealthIndicator,
   DiskHealthIndicator,
 } from "@nestjs/terminus";
+import { SkipThrottle } from "@nestjs/throttler";
 import { Public } from "~/auth/decorators/public.decorator";
 import { DatabaseHealthIndicator } from "../indicators/database-health.indicator";
-import { RedisHealthIndicator } from "../indicators/redis-health.indicator";
 import { AppConfigService } from "~/shared/config/app-config.service";
+import { RedisHealthIndicator } from "../indicators/redis-health.indicator";
 
 @ApiTags("health")
 @Controller("health")
+@SkipThrottle()
 export class HealthController {
   constructor(
     private health: HealthCheckService,
@@ -21,6 +23,7 @@ export class HealthController {
     private memory: MemoryHealthIndicator,
     private disk: DiskHealthIndicator,
     private database: DatabaseHealthIndicator,
+    private config: AppConfigService,
     private redis: RedisHealthIndicator,
     private config: AppConfigService,
   ) {}

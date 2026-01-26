@@ -27,7 +27,7 @@ pnpm prisma:seed
 pnpm dev
 
 # 5. Verify health
-curl http://localhost:8001/health
+curl http://localhost:8000/health
 ```
 
 ## Database Configuration
@@ -304,7 +304,7 @@ The service includes database health indicators for both PostgreSQL and Redis:
 ### Testing Health
 
 ```bash
-curl http://localhost:8001/health | jq
+curl http://localhost:8000/health | jq
 
 # Expected output includes:
 {

@@ -61,7 +61,7 @@ Built with clean architecture using:
 - **Hexagonal architecture** (ports and adapters pattern)
 - **Domain-driven design** principles
 - **Type-safe** domain models and DTOs
-- **Comprehensive testing** (unit + integration)
+- **Comprehensive testing** (unit + component)
 
 See [CLAUDE.md](./CLAUDE.md) for detailed architectural documentation.
 

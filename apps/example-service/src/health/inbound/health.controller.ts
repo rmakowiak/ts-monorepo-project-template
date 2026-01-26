@@ -9,6 +9,8 @@ import {
 } from "@nestjs/terminus";
 import { Public } from "~/auth/decorators/public.decorator";
 import { DatabaseHealthIndicator } from "../indicators/database-health.indicator";
+import { RedisHealthIndicator } from "../indicators/redis-health.indicator";
+import { AppConfigService } from "~/shared/config/app-config.service";
 
 @ApiTags("health")
 @Controller("health")
@@ -19,6 +21,8 @@ export class HealthController {
     private memory: MemoryHealthIndicator,
     private disk: DiskHealthIndicator,
     private database: DatabaseHealthIndicator,
+    private redis: RedisHealthIndicator,
+    private config: AppConfigService,
   ) {}
 
   @Get()
@@ -41,12 +45,14 @@ export class HealthController {
   @ApiResponse({ status: 503, description: "Service is unhealthy" })
   check() {
     return this.health.check([
-      () => this.http.pingCheck("http", "http://localhost:8000"),
+      () =>
+        this.http.pingCheck("http", `http://localhost:${this.config.app.PORT}`),
       () => this.memory.checkHeap("memory_heap", 150 * 1024 * 1024), // 150MB
       () => this.memory.checkRSS("memory_rss", 300 * 1024 * 1024), // 300MB
       () =>
         this.disk.checkStorage("storage", { path: "/", thresholdPercent: 0.9 }),
       () => this.database.isHealthy("database"),
+      () => this.redis.isHealthy("redis"),
     ]);
   }
 }

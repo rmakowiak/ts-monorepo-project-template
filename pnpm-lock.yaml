@@ -66,13 +66,19 @@ importers:
         version: 8.1.1(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.12)(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)
       "@nestjs/terminus":
         specifier: ^10.2.3
-        version: 10.3.0(@grpc/grpc-js@1.14.3)(@grpc/proto-loader@0.8.0)(@nestjs/axios@3.1.3(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(axios@1.13.2)(rxjs@7.8.2))(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.12)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 10.3.0(@grpc/grpc-js@1.14.3)(@grpc/proto-loader@0.8.0)(@nestjs/axios@3.1.3(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(axios@1.13.2)(rxjs@7.8.2))(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.12)(@prisma/client@5.22.0(prisma@5.22.0))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      "@prisma/client":
+        specifier: ^5.20.0
+        version: 5.22.0(prisma@5.22.0)
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
       class-validator:
         specifier: ^0.14.1
         version: 0.14.3
+      ioredis:
+        specifier: ^5.3.2
+        version: 5.9.2
       nestjs-pino:
         specifier: ^4.1.0
         version: 4.5.0(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(pino-http@10.5.0)(pino@9.14.0)(rxjs@7.8.2)
@@ -113,6 +119,9 @@ importers:
       "@types/express":
         specifier: ^5.0.0
         version: 5.0.0
+      "@types/ioredis":
+        specifier: ^5.0.0
+        version: 5.0.0
       "@types/jest":
         specifier: ^30.0.0
         version: 30.0.0
@@ -143,6 +152,9 @@ importers:
       prettier:
         specifier: 3.6.2
         version: 3.6.2
+      prisma:
+        specifier: ^5.20.0
+        version: 5.22.0
       supertest:
         specifier: ^7.0.0
         version: 7.2.2
@@ -1233,6 +1245,12 @@ packages:
     peerDependenciesMeta:
       "@types/node":
         optional: true
+
+  "@ioredis/commands@1.5.0":
+    resolution:
+      {
+        integrity: sha512-eUgLqrMf8nJkZxT24JvVRrQya1vZkQh8BBeYNwGDqa5I0VUi8ACx7uFvAaLxintokpTenkK6DASvo/bvNbBGow==,
+      }
 
   "@isaacs/balanced-match@4.0.1":
     resolution:
@@ -2621,6 +2639,48 @@ packages:
       }
     engines: { node: ^12.20.0 || ^14.18.0 || >=16.0.0 }
 
+  "@prisma/client@5.22.0":
+    resolution:
+      {
+        integrity: sha512-M0SVXfyHnQREBKxCgyo7sffrKttwE6R8PMq330MIUF0pTwjUhLbW84pFDlf06B27XyCR++VtjugEnIHdr07SVA==,
+      }
+    engines: { node: ">=16.13" }
+    peerDependencies:
+      prisma: "*"
+    peerDependenciesMeta:
+      prisma:
+        optional: true
+
+  "@prisma/debug@5.22.0":
+    resolution:
+      {
+        integrity: sha512-AUt44v3YJeggO2ZU5BkXI7M4hu9BF2zzH2iF2V5pyXT/lRTyWiElZ7It+bRH1EshoMRxHgpYg4VB6rCM+mG5jQ==,
+      }
+
+  "@prisma/engines-version@5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2":
+    resolution:
+      {
+        integrity: sha512-2PTmxFR2yHW/eB3uqWtcgRcgAbG1rwG9ZriSvQw+nnb7c4uCr3RAcGMb6/zfE88SKlC1Nj2ziUvc96Z379mHgQ==,
+      }
+
+  "@prisma/engines@5.22.0":
+    resolution:
+      {
+        integrity: sha512-UNjfslWhAt06kVL3CjkuYpHAWSO6L4kDCVPegV6itt7nD1kSJavd3vhgAEhjglLJJKEdJ7oIqDJ+yHk6qO8gPA==,
+      }
+
+  "@prisma/fetch-engine@5.22.0":
+    resolution:
+      {
+        integrity: sha512-bkrD/Mc2fSvkQBV5EpoFcZ87AvOgDxbG99488a5cexp5Ccny+UM6MAe/UFkUC0wLYD9+9befNOqGiIJhhq+HbA==,
+      }
+
+  "@prisma/get-platform@5.22.0":
+    resolution:
+      {
+        integrity: sha512-pHhpQdr1UPFpt+zFfnPazhulaZYCUqeIcPpJViYoq9R+D/yw4fjE+CtnsnKzPYm0ddUbeXUzjGVGIRVgPDCk4Q==,
+      }
+
   "@protobufjs/aspromise@1.1.2":
     resolution:
       {
@@ -2992,6 +3052,13 @@ packages:
       {
         integrity: sha512-69LyhUgrXdgcNDv7ogs1qXZomnfOEnSmrmMFqKgt1XMJxmoOSG/u3wYy13yACIfKuMJ8IhKgHafDO3sx19zVQQ==,
       }
+
+  "@types/ioredis@5.0.0":
+    resolution:
+      {
+        integrity: sha512-zJbJ3FVE17CNl5KXzdeSPtdltc4tMT3TzC6fxQS0sQngkbFZ6h+0uTafsRqu+eSLIugf6Yb0Ea0SUuRr42Nk9g==,
+      }
+    deprecated: This is a stub types definition. ioredis provides its own type definitions, so you do not need this installed.
 
   "@types/istanbul-lib-coverage@2.0.6":
     resolution:
@@ -4386,6 +4453,13 @@ packages:
       }
     engines: { node: ">=0.8" }
 
+  cluster-key-slot@1.1.2:
+    resolution:
+      {
+        integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==,
+      }
+    engines: { node: ">=0.10.0" }
+
   co@4.6.0:
     resolution:
       {
@@ -4878,6 +4952,13 @@ packages:
         integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==,
       }
     engines: { node: ">=0.4.0" }
+
+  denque@2.1.0:
+    resolution:
+      {
+        integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==,
+      }
+    engines: { node: ">=0.10" }
 
   depd@2.0.0:
     resolution:
@@ -6126,6 +6207,13 @@ packages:
       "@types/node":
         optional: true
 
+  ioredis@5.9.2:
+    resolution:
+      {
+        integrity: sha512-tAAg/72/VxOUW7RQSX1pIxJVucYKcjFjfvj60L57jrZpYCHC3XN0WCQ3sNYL4Gmvv+7GPvTAjc+KSdeNuE8oWQ==,
+      }
+    engines: { node: ">=12.22.0" }
+
   ip-address@10.1.0:
     resolution:
       {
@@ -7049,6 +7137,12 @@ packages:
         integrity: sha512-kZzYOKspf8XVX5AvmQF94gQW0lejFVgb80G85bU4ZWzoJ6C03PQg3coYAUpSTpQWelrZELd3XWgHzw4Ck5kaIw==,
       }
 
+  lodash.defaults@4.2.0:
+    resolution:
+      {
+        integrity: sha512-qjxPLHd3r5DnsdGacqOMU6pb/avJzdh9tFX2ymgoZE27BmjXrNy/y4LoaiTeAb+O3gL8AfpJGtqfX/ae2leYYQ==,
+      }
+
   lodash.escaperegexp@4.1.2:
     resolution:
       {
@@ -7059,6 +7153,12 @@ packages:
     resolution:
       {
         integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==,
+      }
+
+  lodash.isarguments@3.1.0:
+    resolution:
+      {
+        integrity: sha512-chi4NHZlZqZD18a0imDHnZPrDeBbTtVN7GXMwuGdRH9qotxAjYs3aVLKc7zNOG9eddR5Ksd8rvFEBc9SsggPpg==,
       }
 
   lodash.isboolean@3.0.3:
@@ -8257,6 +8357,14 @@ packages:
       }
     engines: { node: ">=18" }
 
+  prisma@5.22.0:
+    resolution:
+      {
+        integrity: sha512-vtpjW3XuYCSnMsNVBjLMNkTj6OZbudcPPTPYHqX0CJfpcdWciI1dM8uHETwmDxxiqEwCIE6WvXucWUetJgfu/A==,
+      }
+    engines: { node: ">=16.13" }
+    hasBin: true
+
   process-warning@3.0.0:
     resolution:
       {
@@ -8447,6 +8555,20 @@ packages:
         integrity: sha512-57frrGM/OCTLqLOAh0mhVA9VBMHd+9U7Zb2THMGdBUoZVOtGbJzjxsYGDJ3A9AYYCP4hn6y1TVbaOfzWtm5GFg==,
       }
     engines: { node: ">= 12.13.0" }
+
+  redis-errors@1.2.0:
+    resolution:
+      {
+        integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==,
+      }
+    engines: { node: ">=4" }
+
+  redis-parser@3.0.0:
+    resolution:
+      {
+        integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==,
+      }
+    engines: { node: ">=4" }
 
   reflect-metadata@0.1.14:
     resolution:
@@ -8877,6 +8999,12 @@ packages:
         integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==,
       }
     engines: { node: ">=10" }
+
+  standard-as-callback@2.1.0:
+    resolution:
+      {
+        integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==,
+      }
 
   statuses@2.0.2:
     resolution:
@@ -10520,6 +10648,8 @@ snapshots:
     optionalDependencies:
       "@types/node": 22.18.10
 
+  "@ioredis/commands@1.5.0": {}
+
   "@isaacs/balanced-match@4.0.1": {}
 
   "@isaacs/brace-expansion@5.0.0":
@@ -11054,7 +11184,7 @@ snapshots:
       class-transformer: 0.5.1
       class-validator: 0.14.3
 
-  "@nestjs/terminus@10.3.0(@grpc/grpc-js@1.14.3)(@grpc/proto-loader@0.8.0)(@nestjs/axios@3.1.3(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(axios@1.13.2)(rxjs@7.8.2))(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.12)(reflect-metadata@0.2.2)(rxjs@7.8.2)":
+  "@nestjs/terminus@10.3.0(@grpc/grpc-js@1.14.3)(@grpc/proto-loader@0.8.0)(@nestjs/axios@3.1.3(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(axios@1.13.2)(rxjs@7.8.2))(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.12)(@prisma/client@5.22.0(prisma@5.22.0))(reflect-metadata@0.2.2)(rxjs@7.8.2)":
     dependencies:
       "@nestjs/common": 11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       "@nestjs/core": 11.1.12(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.12)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -11066,6 +11196,7 @@ snapshots:
       "@grpc/grpc-js": 1.14.3
       "@grpc/proto-loader": 0.8.0
       "@nestjs/axios": 3.1.3(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(axios@1.13.2)(rxjs@7.8.2)
+      "@prisma/client": 5.22.0(prisma@5.22.0)
 
   "@nestjs/testing@11.1.12(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.12)(@nestjs/platform-express@11.1.12)":
     dependencies:
@@ -11789,6 +11920,32 @@ snapshots:
 
   "@pkgr/core@0.2.9": {}
 
+  "@prisma/client@5.22.0(prisma@5.22.0)":
+    optionalDependencies:
+      prisma: 5.22.0
+
+  "@prisma/debug@5.22.0": {}
+
+  "@prisma/engines-version@5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2":
+    {}
+
+  "@prisma/engines@5.22.0":
+    dependencies:
+      "@prisma/debug": 5.22.0
+      "@prisma/engines-version": 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2
+      "@prisma/fetch-engine": 5.22.0
+      "@prisma/get-platform": 5.22.0
+
+  "@prisma/fetch-engine@5.22.0":
+    dependencies:
+      "@prisma/debug": 5.22.0
+      "@prisma/engines-version": 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2
+      "@prisma/get-platform": 5.22.0
+
+  "@prisma/get-platform@5.22.0":
+    dependencies:
+      "@prisma/debug": 5.22.0
+
   "@protobufjs/aspromise@1.1.2": {}
 
   "@protobufjs/base64@1.1.2": {}
@@ -12018,6 +12175,12 @@ snapshots:
   "@types/ioredis@4.28.10":
     dependencies:
       "@types/node": 22.18.10
+
+  "@types/ioredis@5.0.0":
+    dependencies:
+      ioredis: 5.9.2
+    transitivePeerDependencies:
+      - supports-color
 
   "@types/istanbul-lib-coverage@2.0.6": {}
 
@@ -12953,6 +13116,8 @@ snapshots:
 
   clone@1.0.4: {}
 
+  cluster-key-slot@1.1.2: {}
+
   co@4.6.0: {}
 
   collect-v8-coverage@1.0.3: {}
@@ -13225,6 +13390,8 @@ snapshots:
       esprima: 4.0.1
 
   delayed-stream@1.0.0: {}
+
+  denque@2.1.0: {}
 
   depd@2.0.0: {}
 
@@ -14013,6 +14180,20 @@ snapshots:
       rxjs: 7.8.2
     optionalDependencies:
       "@types/node": 22.18.10
+
+  ioredis@5.9.2:
+    dependencies:
+      "@ioredis/commands": 1.5.0
+      cluster-key-slot: 1.1.2
+      debug: 4.4.3
+      denque: 2.1.0
+      lodash.defaults: 4.2.0
+      lodash.isarguments: 3.1.0
+      redis-errors: 1.2.0
+      redis-parser: 3.0.0
+      standard-as-callback: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
 
   ip-address@10.1.0: {}
 
@@ -14963,9 +15144,13 @@ snapshots:
 
   lodash.capitalize@4.2.1: {}
 
+  lodash.defaults@4.2.0: {}
+
   lodash.escaperegexp@4.1.2: {}
 
   lodash.includes@4.3.0: {}
+
+  lodash.isarguments@3.1.0: {}
 
   lodash.isboolean@3.0.3: {}
 
@@ -15607,6 +15792,12 @@ snapshots:
     dependencies:
       parse-ms: 4.0.0
 
+  prisma@5.22.0:
+    dependencies:
+      "@prisma/engines": 5.22.0
+    optionalDependencies:
+      fsevents: 2.3.3
+
   process-warning@3.0.0: {}
 
   process-warning@5.0.0: {}
@@ -15731,6 +15922,12 @@ snapshots:
   readdirp@5.0.0: {}
 
   real-require@0.2.0: {}
+
+  redis-errors@1.2.0: {}
+
+  redis-parser@3.0.0:
+    dependencies:
+      redis-errors: 1.2.0
 
   reflect-metadata@0.1.14: {}
 
@@ -16013,6 +16210,8 @@ snapshots:
   stack-utils@2.0.6:
     dependencies:
       escape-string-regexp: 2.0.0
+
+  standard-as-callback@2.1.0: {}
 
   statuses@2.0.2: {}
 

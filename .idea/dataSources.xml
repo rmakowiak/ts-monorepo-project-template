@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <!-- Development Database -->
+    <data-source source="LOCAL" name="example-dev" uuid="a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://localhost:5432/example_dev</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+      <user-name>postgres</user-name>
+      <password>postgres</password>
+    </data-source>
+
+    <!-- Test Database -->
+    <data-source source="LOCAL" name="example-test" uuid="b2c3d4e5-f6a7-4b5c-9d0e-1f2a3b4c5d6e">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://localhost:5433/example_test</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+      <user-name>postgres</user-name>
+      <password>postgres</password>
+    </data-source>
+
+    <!-- Worktree Database (feat-add-databases) -->
+    <data-source source="LOCAL" name="example-dev-feat-add-databases" uuid="c3d4e5f6-a7b8-4c5d-0e1f-2a3b4c5d6e7f">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://localhost:5432/example_dev_feat_add_databases</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+      <user-name>postgres</user-name>
+      <password>postgres</password>
+    </data-source>
+  </component>
+</project>

@@ -24,7 +24,8 @@ coverage
 .vercel
 
 # IDE
-.idea
+.idea/*
+!.idea/dataSources.xml
 
 # Build Outputs
 .next/

@@ -82,6 +82,59 @@ validate_worktree_name() {
   fi
 }
 
+# Setup databases for worktree (create DB, run migrations, seed)
+setup_worktree_databases() {
+  local worktree_name="$1"
+  local worktree_path="$2"
+
+  # Check if Docker postgres container is running
+  if ! docker ps --filter "name=postgres" --format "{{.Names}}" | grep -q "^postgres$"; then
+    echo "  Warning: PostgreSQL container not running. Skipping database setup."
+    echo "  To start: cd infrastructure && docker-compose up -d postgres"
+    return 0
+  fi
+
+  # Transform worktree name to database suffix (replace - with _)
+  local db_suffix
+  db_suffix=$(echo "$worktree_name" | sed 's/-/_/g')
+
+  # Database names
+  local dev_db="example_dev_${db_suffix}"
+
+  echo "  Creating database: $dev_db"
+
+  # Create development database
+  if docker exec postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "$dev_db"; then
+    echo "    Database $dev_db already exists, skipping creation"
+  else
+    if docker exec postgres psql -U postgres -c "CREATE DATABASE ${dev_db};" >/dev/null 2>&1; then
+      echo "    ✓ Created database: $dev_db"
+    else
+      echo "    Warning: Failed to create database $dev_db" >&2
+      return 0
+    fi
+  fi
+
+  # Run migrations for example-service if it exists
+  local service_path="${worktree_path}/apps/example-service"
+  if [[ -d "$service_path" ]] && [[ -f "$service_path/prisma/schema.prisma" ]]; then
+    echo "  Running Prisma migrations..."
+
+    if (cd "$service_path" && pnpm prisma migrate deploy >/dev/null 2>&1); then
+      echo "    ✓ Migrations applied"
+
+      # Run seed
+      echo "  Seeding database..."
+      if (cd "$service_path" && pnpm prisma:seed >/dev/null 2>&1); then
+        echo "    ✓ Database seeded with sample data"
+      else
+        echo "    Warning: Failed to seed database (non-fatal)" >&2
+      fi
+    else
+      echo "    Warning: Failed to run migrations (non-fatal)" >&2
+    fi
+  fi
+}
 
 # Main function
 main() {
@@ -166,7 +219,7 @@ main() {
     local app_dest="${worktree_path}/apps/${app_name}"
 
     if [[ -d "$app_source" ]]; then
-      copy_app_files "$app_name" "$app_source" "$app_dest" "$ports_json"
+      copy_app_files "$app_name" "$app_source" "$app_dest" "$ports_json" "$worktree_name"
     else
       echo "  Warning: App directory not found: $app_source"
     fi
@@ -202,6 +255,11 @@ main() {
     git -C "$REPO_ROOT" worktree remove "$worktree_path" 2>&1 || true
     exit 1
   fi
+  echo ""
+
+  # Setup databases for worktree
+  echo "Setting up databases..."
+  setup_worktree_databases "$worktree_name" "$worktree_path"
   echo ""
 
   # Success message

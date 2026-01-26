@@ -6,7 +6,7 @@ import {
   createTestProductDto,
   BOUNDARY_VALUES,
 } from "../fixtures/product.fixtures";
-import { DEFAULT_JWT_SECRET } from "~/shared/config/config.constants";
+import { DEFAULT_JWT_SECRET } from "../../src/shared/config/config.constants";
 
 describe("Product API (Integration)", () => {
   let app: INestApplication;
@@ -252,8 +252,17 @@ describe("Product API (Integration)", () => {
 
   describe("GET /products/:id (ECP)", () => {
     it("should return product by ID as authenticated user (ECP: Valid)", async () => {
-      // Arrange - Use seeded product
-      const productId = "1";
+      // Arrange - Create product first
+      const createDto = createTestProductDto({
+        sku: `TEST-GET-${Date.now()}`,
+      });
+      const createResponse = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const productId = createResponse.body.id;
 
       // Act
       const response = await request(app.getHttpServer())
@@ -281,8 +290,22 @@ describe("Product API (Integration)", () => {
     });
 
     it("should return 401 when no auth token provided (ECP: Invalid auth)", async () => {
+      // Arrange - Create product first
+      const createDto = createTestProductDto({
+        sku: `TEST-GET-NOAUTH-${Date.now()}`,
+      });
+      const createResponse = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const productId = createResponse.body.id;
+
       // Act & Assert
-      await request(app.getHttpServer()).get("/products/1").expect(401);
+      await request(app.getHttpServer())
+        .get(`/products/${productId}`)
+        .expect(401);
     });
   });
 
@@ -320,12 +343,22 @@ describe("Product API (Integration)", () => {
     });
 
     it("should return 403 when user role tries to update (ECP: Invalid role)", async () => {
-      // Arrange
+      // Arrange - Create product first
+      const createDto = createTestProductDto({
+        sku: `TEST-UPDATE-NOPERM-${Date.now()}`,
+      });
+      const createResponse = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const productId = createResponse.body.id;
       const updateDto = { price: 100 };
 
       // Act & Assert
       await request(app.getHttpServer())
-        .patch("/products/1")
+        .patch(`/products/${productId}`)
         .set("Authorization", `Bearer ${userToken}`)
         .send(updateDto)
         .expect(403);
@@ -344,21 +377,43 @@ describe("Product API (Integration)", () => {
     });
 
     it("should return 400 for invalid update data (BVA: Negative price)", async () => {
-      // Arrange
+      // Arrange - Create product first
+      const createDto = createTestProductDto({
+        sku: `TEST-UPDATE-INVALID-${Date.now()}`,
+      });
+      const createResponse = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const productId = createResponse.body.id;
       const updateDto = { price: BOUNDARY_VALUES.price.invalid.negative };
 
       // Act & Assert
       await request(app.getHttpServer())
-        .patch("/products/1")
+        .patch(`/products/${productId}`)
         .set("Authorization", `Bearer ${adminToken}`)
         .send(updateDto)
         .expect(400);
     });
 
     it("should return 401 when no auth token provided (ECP: No auth)", async () => {
+      // Arrange - Create product first
+      const createDto = createTestProductDto({
+        sku: `TEST-UPDATE-NOAUTH-${Date.now()}`,
+      });
+      const createResponse = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const productId = createResponse.body.id;
+
       // Act & Assert
       await request(app.getHttpServer())
-        .patch("/products/1")
+        .patch(`/products/${productId}`)
         .send({ price: 100 })
         .expect(401);
     });
@@ -417,9 +472,21 @@ describe("Product API (Integration)", () => {
     });
 
     it("should return 403 when user role tries to delete (ECP: Invalid role)", async () => {
+      // Arrange - Create product first
+      const createDto = createTestProductDto({
+        sku: `TEST-DELETE-NOPERM-${Date.now()}`,
+      });
+      const createResponse = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const productId = createResponse.body.id;
+
       // Act & Assert
       await request(app.getHttpServer())
-        .delete("/products/1")
+        .delete(`/products/${productId}`)
         .set("Authorization", `Bearer ${userToken}`)
         .expect(403);
     });
@@ -433,8 +500,22 @@ describe("Product API (Integration)", () => {
     });
 
     it("should return 401 when no auth token provided (ECP: No auth)", async () => {
+      // Arrange - Create product first
+      const createDto = createTestProductDto({
+        sku: `TEST-DELETE-NOAUTH-${Date.now()}`,
+      });
+      const createResponse = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const productId = createResponse.body.id;
+
       // Act & Assert
-      await request(app.getHttpServer()).delete("/products/1").expect(401);
+      await request(app.getHttpServer())
+        .delete(`/products/${productId}`)
+        .expect(401);
     });
   });
 });

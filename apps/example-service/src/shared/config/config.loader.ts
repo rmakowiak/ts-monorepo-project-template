@@ -6,6 +6,7 @@ import {
   LogLevel,
 } from "./schemas/app.config.schema";
 import { AuthConfigSchema } from "./schemas/auth.config.schema";
+import { DatabaseConfigSchema } from "./schemas/database.config.schema";
 import { DEFAULT_JWT_SECRET } from "./config.constants";
 
 /**
@@ -35,6 +36,7 @@ import { DEFAULT_JWT_SECRET } from "./config.constants";
 export interface ValidatedConfig {
   readonly app: AppConfigSchema;
   readonly auth: AuthConfigSchema;
+  readonly database: DatabaseConfigSchema;
 }
 
 /**
@@ -125,6 +127,18 @@ export function loadConfig(): ValidatedConfig {
     "AuthConfig",
   );
 
+  const databaseConfig = loadAndValidateSchema(
+    DatabaseConfigSchema,
+    {
+      DATABASE_URL:
+        process.env.DATABASE_URL ||
+        "postgresql://postgres:postgres@localhost:5432/example_dev?schema=public",
+      REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
+      DATABASE_LOGGING: process.env.DATABASE_LOGGING || "false",
+    },
+    "DatabaseConfig",
+  );
+
   // Log loaded configuration (masking secrets) in non-test environments
   // NOTE: Using console.log here instead of PinoLogger because this runs during
   // bootstrap before the logger is initialized. This is a bootstrap-phase log.
@@ -141,6 +155,14 @@ export function loadConfig(): ValidatedConfig {
           authConfig.JWT_SECRET === DEFAULT_JWT_SECRET
             ? "<using DEFAULT_JWT_SECRET>"
             : "<custom secret set>",
+      },
+      database: {
+        DATABASE_URL: databaseConfig.DATABASE_URL.replace(
+          /\/\/([^:]+):([^@]+)@/,
+          "//***:***@",
+        ),
+        REDIS_URL: databaseConfig.REDIS_URL,
+        DATABASE_LOGGING: databaseConfig.DATABASE_LOGGING,
       },
     };
     console.log(
@@ -166,5 +188,6 @@ export function loadConfig(): ValidatedConfig {
   return Object.freeze({
     app: Object.freeze(appConfig),
     auth: Object.freeze(authConfig),
+    database: Object.freeze(databaseConfig),
   });
 }

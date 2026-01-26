@@ -7,14 +7,14 @@
           "source": ".env",
           "destination": ".env",
           "required": true,
-          "transform": "update_ports",
-          "description": "Environment configuration with PORT and OTEL_METRICS_PORT"
+          "transform": "update_env_vars",
+          "description": "Environment configuration with ports and database URL"
         },
         {
           "source": ".env.local",
           "destination": ".env.local",
           "required": false,
-          "transform": "update_ports",
+          "transform": "update_env_vars",
           "description": "Local environment configuration overrides"
         },
         {

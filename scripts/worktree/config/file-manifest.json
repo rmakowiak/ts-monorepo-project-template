@@ -4,18 +4,11 @@
     "example-service": {
       "files": [
         {
-          "source": ".env",
+          "source": ".env.example",
           "destination": ".env",
           "required": true,
           "transform": "update_env_vars",
-          "description": "Environment configuration with ports and database URL"
-        },
-        {
-          "source": ".env.local",
-          "destination": ".env.local",
-          "required": false,
-          "transform": "update_env_vars",
-          "description": "Local environment configuration overrides"
+          "description": "Environment configuration from .env.example with ports and database URL updated"
         },
         {
           "source": "requests/http-client.env.json",

@@ -9,6 +9,7 @@ REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
 # Source library scripts
 source "$SCRIPT_DIR/port-allocator.sh"
 source "$SCRIPT_DIR/file-copier.sh"
+source "$SCRIPT_DIR/datasource-manager.sh"
 
 # Print usage
 usage() {
@@ -260,6 +261,14 @@ main() {
   # Setup databases for worktree
   echo "Setting up databases..."
   setup_worktree_databases "$worktree_name" "$worktree_path"
+  echo ""
+
+  # Update .idea/dataSources.xml if it exists
+  echo "Updating IDE datasources..."
+  local db_suffix
+  db_suffix=$(echo "$worktree_name" | sed 's/-/_/g')
+  local dev_db="example_dev_${db_suffix}"
+  copy_and_update_datasources "$REPO_ROOT" "$worktree_path" "$worktree_name" "$dev_db"
   echo ""
 
   # Success message

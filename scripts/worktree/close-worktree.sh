@@ -5,6 +5,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Source library scripts
+source "$SCRIPT_DIR/datasource-manager.sh"
+
 # Print usage
 usage() {
   echo "Usage: $0 [worktree-name-or-path] [--force]"
@@ -217,6 +220,15 @@ main() {
 
   # Cleanup databases
   cleanup_worktree_databases "$worktree_path"
+
+  # Extract worktree name for datasource cleanup
+  local worktree_name
+  worktree_name=$(basename "$worktree_path" | sed 's/.*\.worktree\.//')
+
+  # Cleanup IDE datasources
+  echo ""
+  echo "Cleaning up IDE datasources..."
+  cleanup_datasources "$main_repo_root" "$worktree_name"
 
   # Remove worktree
   echo ""

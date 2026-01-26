@@ -75,7 +75,7 @@ apply_transform() {
 
     update_env_vars)
       # Combined transformation: update ports AND database URL
-      # First, update ports
+      # Since we copy from .env.example, all variables exist - just transform them
       local port
       port=$(get_port_value "$ports_json" "PORT")
       local otel_port
@@ -95,11 +95,14 @@ apply_transform() {
         sed -i "s/^[[:space:]]*OTEL_METRICS_PORT=.*/OTEL_METRICS_PORT=${otel_port}/" "$file_path"
       fi
 
-      # Update DATABASE_URL if worktree_name is provided
+      # Update DATABASE_URL with worktree-specific database name
       if [[ -n "$worktree_name" ]]; then
         local db_suffix
         db_suffix=$(echo "$worktree_name" | sed 's/-/_/g')
 
+        # Transform DATABASE_URL to include worktree suffix
+        # Pattern: postgresql://user:pass@host:port/database_name?params
+        # Replace database_name with database_name_suffix
         if [[ "$OSTYPE" == "darwin"* ]]; then
           sed -i '' -E "s|(^[[:space:]]*DATABASE_URL=postgresql://[^/]+/)([^?]+)|\1\2_${db_suffix}|" "$file_path"
         else

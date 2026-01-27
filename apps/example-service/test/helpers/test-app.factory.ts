@@ -4,9 +4,11 @@ import {
   ValidationPipe,
   LoggerService,
 } from "@nestjs/common";
+import { Module, Global } from "@nestjs/common";
 import { AppModule } from "~/app.module";
 import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
 import { PrismaService } from "~/database/prisma.service";
+import { DatabaseModule } from "~/database/database.module";
 
 export interface TestAppOptions {
   /**
@@ -74,31 +76,37 @@ export async function createTestApp(
     process.env.LOG_LEVEL = "fatal";
   }
 
+  // Create a mock DatabaseModule for component tests
+  // Must be @Global() to match real DatabaseModule behavior
+  @Global()
+  @Module({
+    providers: [
+      {
+        provide: PrismaService,
+        useFactory: () => ({
+          $connect: jest.fn().mockResolvedValue(undefined),
+          $disconnect: jest.fn().mockResolvedValue(undefined),
+          $queryRaw: jest.fn().mockResolvedValue([{ result: 1 }]),
+          $on: jest.fn(),
+        }),
+      },
+    ],
+    exports: [PrismaService],
+  })
+  class MockDatabaseModule {}
+
   const moduleBuilder = Test.createTestingModule({
     imports: [AppModule],
   });
 
   // Override repositories with in-memory implementations for component tests
   if (useInMemoryRepositories) {
+    // Replace DatabaseModule with MockDatabaseModule to prevent real DB connections
+    moduleBuilder.overrideModule(DatabaseModule).useModule(MockDatabaseModule);
+
     moduleBuilder
       .overrideProvider("ProductRepository")
       .useClass(InMemoryProductRepository);
-
-    // Mock PrismaService to prevent database connection attempts
-    // Using useFactory to create a proper mock that prevents lifecycle hooks
-    moduleBuilder.overrideProvider(PrismaService).useFactory({
-      factory: () => {
-        const mockPrisma = {
-          $connect: jest.fn().mockResolvedValue(undefined),
-          $disconnect: jest.fn().mockResolvedValue(undefined),
-          $queryRaw: jest.fn().mockResolvedValue([{ result: 1 }]),
-          $on: jest.fn(),
-          onModuleInit: jest.fn().mockResolvedValue(undefined),
-          onModuleDestroy: jest.fn().mockResolvedValue(undefined),
-        };
-        return mockPrisma;
-      },
-    });
   }
 
   const moduleFixture: TestingModule = await moduleBuilder.compile();

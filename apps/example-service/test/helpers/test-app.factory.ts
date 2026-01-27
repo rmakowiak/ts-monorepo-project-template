@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { AppModule } from "~/app.module";
 import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
+import { PrismaService } from "~/database/prisma.service";
 
 export interface TestAppOptions {
   /**
@@ -84,12 +85,19 @@ export async function createTestApp(
       .useClass(InMemoryProductRepository);
 
     // Mock PrismaService to prevent database connection attempts
-    moduleBuilder.overrideProvider("PrismaService").useValue({
-      $connect: jest.fn(),
-      $disconnect: jest.fn(),
-      $queryRaw: jest.fn(),
-      onModuleInit: jest.fn(),
-      onModuleDestroy: jest.fn(),
+    // Using useFactory to create a proper mock that prevents lifecycle hooks
+    moduleBuilder.overrideProvider(PrismaService).useFactory({
+      factory: () => {
+        const mockPrisma = {
+          $connect: jest.fn().mockResolvedValue(undefined),
+          $disconnect: jest.fn().mockResolvedValue(undefined),
+          $queryRaw: jest.fn().mockResolvedValue([{ result: 1 }]),
+          $on: jest.fn(),
+          onModuleInit: jest.fn().mockResolvedValue(undefined),
+          onModuleDestroy: jest.fn().mockResolvedValue(undefined),
+        };
+        return mockPrisma;
+      },
     });
   }
 

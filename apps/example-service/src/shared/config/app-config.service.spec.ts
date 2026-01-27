@@ -5,6 +5,7 @@ import { Environment, LogLevel } from "./schemas/app.config.schema";
 import type { ValidatedConfig } from "./config.loader";
 import type { AppConfigSchema } from "./schemas/app.config.schema";
 import type { AuthConfigSchema } from "./schemas/auth.config.schema";
+import type { DatabaseConfigSchema } from "./schemas/database.config.schema";
 
 describe("AppConfigService", () => {
   let service: AppConfigService;
@@ -18,6 +19,12 @@ describe("AppConfigService", () => {
 
   const mockAuthConfig: AuthConfigSchema = {
     JWT_SECRET: "test-secret-at-least-32-characters-long",
+  };
+
+  const mockDatabaseConfig: DatabaseConfigSchema = {
+    DATABASE_URL: "postgresql://localhost:5432/test",
+    REDIS_URL: "redis://localhost:6379",
+    DATABASE_LOGGING: false,
   };
 
   beforeEach(() => {
@@ -54,15 +61,30 @@ describe("AppConfigService", () => {
       expect(result.JWT_SECRET).toBe("test-secret-at-least-32-characters-long");
     });
 
+    it("should return database config from database namespace", () => {
+      mockConfigService.get.mockReturnValue(mockDatabaseConfig);
+
+      const result = service.database;
+
+      expect(mockConfigService.get).toHaveBeenCalledWith("database", {
+        infer: true,
+      });
+      expect(result.DATABASE_URL).toBe("postgresql://localhost:5432/test");
+      expect(result.REDIS_URL).toBe("redis://localhost:6379");
+      expect(result.DATABASE_LOGGING).toBe(false);
+    });
+
     it("should return all config namespaces", () => {
       mockConfigService.get
         .mockReturnValueOnce(mockAppConfig)
-        .mockReturnValueOnce(mockAuthConfig);
+        .mockReturnValueOnce(mockAuthConfig)
+        .mockReturnValueOnce(mockDatabaseConfig);
 
       const result = service.all;
 
       expect(result.app).toEqual(mockAppConfig);
       expect(result.auth).toEqual(mockAuthConfig);
+      expect(result.database).toEqual(mockDatabaseConfig);
     });
   });
 
@@ -98,15 +120,19 @@ describe("AppConfigService", () => {
     it("should call config service for each namespace", () => {
       mockConfigService.get
         .mockReturnValueOnce(mockAppConfig)
-        .mockReturnValueOnce(mockAuthConfig);
+        .mockReturnValueOnce(mockAuthConfig)
+        .mockReturnValueOnce(mockDatabaseConfig);
 
       service.all;
 
-      expect(mockConfigService.get).toHaveBeenCalledTimes(2);
+      expect(mockConfigService.get).toHaveBeenCalledTimes(3);
       expect(mockConfigService.get).toHaveBeenCalledWith("app", {
         infer: true,
       });
       expect(mockConfigService.get).toHaveBeenCalledWith("auth", {
+        infer: true,
+      });
+      expect(mockConfigService.get).toHaveBeenCalledWith("database", {
         infer: true,
       });
     });
@@ -114,13 +140,15 @@ describe("AppConfigService", () => {
     it("should return complete config structure", () => {
       mockConfigService.get
         .mockReturnValueOnce(mockAppConfig)
-        .mockReturnValueOnce(mockAuthConfig);
+        .mockReturnValueOnce(mockAuthConfig)
+        .mockReturnValueOnce(mockDatabaseConfig);
 
       const all = service.all;
 
       expect(all).toEqual({
         app: mockAppConfig,
         auth: mockAuthConfig,
+        database: mockDatabaseConfig,
       });
     });
   });

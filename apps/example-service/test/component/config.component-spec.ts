@@ -14,6 +14,8 @@ describe("Configuration Component Tests", () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    // Suppress logger output during tests
+    process.env.LOG_LEVEL = "fatal";
     // Suppress console output
     jest.spyOn(console, "log").mockImplementation();
     jest.spyOn(console, "warn").mockImplementation();
@@ -123,7 +125,7 @@ describe("Configuration Component Tests", () => {
         Test.createTestingModule({
           imports: [AppModule],
         }).compile(),
-      ).rejects.toThrow(/NODE_ENV must be a valid enum value/);
+      ).rejects.toThrow(/NODE_ENV must be one of the following values/);
     });
 
     it("should fail to create app with invalid LOG_LEVEL", async () => {
@@ -135,7 +137,7 @@ describe("Configuration Component Tests", () => {
         Test.createTestingModule({
           imports: [AppModule],
         }).compile(),
-      ).rejects.toThrow(/LOG_LEVEL must be a valid enum value/);
+      ).rejects.toThrow(/LOG_LEVEL must be one of the following values/);
     });
 
     it("should provide detailed error messages on validation failure", async () => {

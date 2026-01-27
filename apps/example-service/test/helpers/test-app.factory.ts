@@ -1,5 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import {
+  INestApplication,
+  ValidationPipe,
+  LoggerService,
+} from "@nestjs/common";
 import { AppModule } from "~/app.module";
 import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
 
@@ -15,6 +19,24 @@ export interface TestAppOptions {
    * @default true
    */
   useInMemoryRepositories?: boolean;
+
+  /**
+   * Whether to suppress logger output during tests
+   * @default true
+   */
+  suppressLogs?: boolean;
+}
+
+/**
+ * Silent logger that suppresses all output during tests
+ */
+class SilentLogger implements LoggerService {
+  log() {}
+  error() {}
+  warn() {}
+  debug() {}
+  verbose() {}
+  fatal() {}
 }
 
 /**
@@ -40,7 +62,16 @@ export interface TestAppOptions {
 export async function createTestApp(
   options: TestAppOptions = {},
 ): Promise<INestApplication> {
-  const { useValidation = true, useInMemoryRepositories = true } = options;
+  const {
+    useValidation = true,
+    useInMemoryRepositories = true,
+    suppressLogs = true,
+  } = options;
+
+  // Suppress logger output during component tests
+  if (!process.env.LOG_LEVEL) {
+    process.env.LOG_LEVEL = "fatal";
+  }
 
   const moduleBuilder = Test.createTestingModule({
     imports: [AppModule],
@@ -56,6 +87,11 @@ export async function createTestApp(
   const moduleFixture: TestingModule = await moduleBuilder.compile();
 
   const app = moduleFixture.createNestApplication();
+
+  // Suppress all logger output during tests
+  if (suppressLogs) {
+    app.useLogger(new SilentLogger());
+  }
 
   // Apply same configuration as main.ts
   if (useValidation) {

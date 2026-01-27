@@ -82,6 +82,15 @@ export async function createTestApp(
     moduleBuilder
       .overrideProvider("ProductRepository")
       .useClass(InMemoryProductRepository);
+
+    // Mock PrismaService to prevent database connection attempts
+    moduleBuilder.overrideProvider("PrismaService").useValue({
+      $connect: jest.fn(),
+      $disconnect: jest.fn(),
+      $queryRaw: jest.fn(),
+      onModuleInit: jest.fn(),
+      onModuleDestroy: jest.fn(),
+    });
   }
 
   const moduleFixture: TestingModule = await moduleBuilder.compile();

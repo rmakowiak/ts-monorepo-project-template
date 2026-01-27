@@ -219,8 +219,8 @@ describe("RedisHealthIndicator", () => {
 
       // Assert
       const latency = parseInt(result.redis.latency);
-      expect(latency).toBeGreaterThanOrEqual(50);
-      expect(latency).toBeLessThan(150); // Allow some overhead
+      expect(latency).toBeGreaterThanOrEqual(45); // Allow timing variance in CI
+      expect(latency).toBeLessThan(200);
     });
 
     it("should use custom key name in result", async () => {

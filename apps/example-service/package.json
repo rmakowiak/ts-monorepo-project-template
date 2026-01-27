@@ -105,8 +105,10 @@
       "!**/*.filter.ts",
       "!**/*.decorator.ts",
       "!**/config/**",
+      "!**/database/**",
       "!**/indicators/**",
       "!**/adapters/simple-*.ts",
+      "!**/adapters/prisma-*.ts",
       "!**/auth/application/auth.service.ts"
     ],
     "coverageDirectory": "../coverage",

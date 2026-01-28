@@ -30,29 +30,27 @@ add_datasource_entry() {
     return 0
   fi
 
-  # Create the new datasource entry
-  local datasource_entry="    <!-- Worktree Database (${worktree_name}) -->
-    <data-source source=\"LOCAL\" name=\"example-dev-${worktree_name}\" uuid=\"${uuid}\">
-      <driver-ref>postgresql</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://localhost:5432/${db_name}</jdbc-url>
-      <working-dir>\$ProjectFileDir\$</working-dir>
-      <user-name>postgres</user-name>
-      <password>postgres</password>
-    </data-source>"
-
   # Create a temporary file
   local temp_file="${datasources_file}.tmp"
 
-  # Insert the new entry before the closing </component> tag using awk
-  awk -v entry="$datasource_entry" '
-    /<\/component>/ {
-      print entry
-      print ""
-    }
-    { print }
-  ' "$datasources_file" > "$temp_file"
+  # Read the file line by line and insert the new datasource entry before </component>
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" == *"</component>"* ]]; then
+      # Insert the new datasource entry before the closing tag
+      echo "    <!-- Worktree Database (${worktree_name}) -->" >> "$temp_file"
+      echo "    <data-source source=\"LOCAL\" name=\"example-dev-${worktree_name}\" uuid=\"${uuid}\">" >> "$temp_file"
+      echo "      <driver-ref>postgresql</driver-ref>" >> "$temp_file"
+      echo "      <synchronize>true</synchronize>" >> "$temp_file"
+      echo "      <jdbc-driver>org.postgresql.Driver</jdbc-driver>" >> "$temp_file"
+      echo "      <jdbc-url>jdbc:postgresql://localhost:5432/${db_name}</jdbc-url>" >> "$temp_file"
+      echo "      <working-dir>\$ProjectFileDir\$</working-dir>" >> "$temp_file"
+      echo "      <user-name>postgres</user-name>" >> "$temp_file"
+      echo "      <password>postgres</password>" >> "$temp_file"
+      echo "    </data-source>" >> "$temp_file"
+      echo "" >> "$temp_file"
+    fi
+    echo "$line" >> "$temp_file"
+  done < "$datasources_file"
 
   # Replace the original file
   mv "$temp_file" "$datasources_file"

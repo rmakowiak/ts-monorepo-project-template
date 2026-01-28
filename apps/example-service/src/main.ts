@@ -1,5 +1,5 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { Logger } from "nestjs-pino";
 import { initializeOtel } from "@monorepo/otel";
@@ -9,7 +9,7 @@ import { AppConfigService } from "./shared/config/app-config.service";
 import { createSecurityMiddleware } from "./shared/security/security.middleware";
 
 async function bootstrap() {
-  let app;
+  let app: INestApplication;
 
   try {
     // Initialize OpenTelemetry BEFORE creating the NestJS app
@@ -161,11 +161,6 @@ async function bootstrap() {
         timestamp: new Date().toISOString(),
       }),
     );
-
-    // Ensure graceful cleanup
-    if (app) {
-      await app.close();
-    }
 
     process.exit(1);
   }

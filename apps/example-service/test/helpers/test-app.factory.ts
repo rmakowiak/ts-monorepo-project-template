@@ -5,6 +5,8 @@ import { AppModule } from "~/app.module";
 import { AppConfigService } from "~/shared/config/app-config.service";
 import { createSecurityMiddleware } from "~/shared/security/security.middleware";
 import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
+import { PrismaService } from "~/database/prisma.service";
+import { MockPrismaService } from "./mock-prisma.service";
 
 export interface TestAppOptions {
   /**
@@ -48,6 +50,11 @@ export async function createTestApp(
   let moduleBuilder = Test.createTestingModule({
     imports: [AppModule],
   });
+
+  // Override database connection with mock for component tests
+  moduleBuilder = moduleBuilder
+    .overrideProvider(PrismaService)
+    .useClass(MockPrismaService);
 
   // Override repositories with in-memory implementations for component tests
   if (useInMemoryRepositories) {

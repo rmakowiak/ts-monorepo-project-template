@@ -15,12 +15,5 @@
       <jdbc-url>jdbc:postgresql://localhost:5433/example_test</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="example-dev-fix-worktree-db" uuid="d4e5f6a7-b8c9-4d5e-1f2a-3b4c5d6e7f8a">
-      <driver-ref>postgresql</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://localhost:5432/example_dev_fix_worktree_db</jdbc-url>
-      <working-dir>$ProjectFileDir$</working-dir>
-    </data-source>
   </component>
 </project>

@@ -25,7 +25,6 @@ export class HealthController {
     private database: DatabaseHealthIndicator,
     private config: AppConfigService,
     private redis: RedisHealthIndicator,
-    private config: AppConfigService,
   ) {}
 
   @Get()

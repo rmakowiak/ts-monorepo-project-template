@@ -3,7 +3,7 @@ import request from "supertest";
 import { createTestApp } from "../helpers/test-app.factory";
 import { DEFAULT_JWT_SECRET } from "~/shared/config/config.constants";
 
-describe("Health API (Integration)", () => {
+describe("Health API (Component)", () => {
   let app: INestApplication;
 
   beforeAll(async () => {

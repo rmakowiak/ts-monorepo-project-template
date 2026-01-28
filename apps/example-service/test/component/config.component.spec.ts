@@ -8,7 +8,7 @@ import {
   LogLevel,
 } from "~/shared/config/schemas/app.config.schema";
 
-describe("Configuration Integration Tests", () => {
+describe("Configuration Component Tests", () => {
   let app: INestApplication;
   const originalEnv = process.env;
 
@@ -123,7 +123,7 @@ describe("Configuration Integration Tests", () => {
         Test.createTestingModule({
           imports: [AppModule],
         }).compile(),
-      ).rejects.toThrow(/NODE_ENV must be a valid enum value/);
+      ).rejects.toThrow(/NODE_ENV.*must be one of the following values/);
     });
 
     it("should fail to create app with invalid LOG_LEVEL", async () => {
@@ -135,7 +135,7 @@ describe("Configuration Integration Tests", () => {
         Test.createTestingModule({
           imports: [AppModule],
         }).compile(),
-      ).rejects.toThrow(/LOG_LEVEL must be a valid enum value/);
+      ).rejects.toThrow(/LOG_LEVEL.*must be one of the following values/);
     });
 
     it("should provide detailed error messages on validation failure", async () => {

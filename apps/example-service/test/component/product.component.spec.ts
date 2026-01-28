@@ -8,7 +8,7 @@ import {
 } from "../fixtures/product.fixtures";
 import { DEFAULT_JWT_SECRET } from "../../src/shared/config/config.constants";
 
-describe("Product API (Integration)", () => {
+describe("Product API (Component)", () => {
   let app: INestApplication;
   let adminToken: string;
   let userToken: string;

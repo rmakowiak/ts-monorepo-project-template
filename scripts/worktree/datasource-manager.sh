@@ -45,14 +45,14 @@ add_datasource_entry() {
   # Create a temporary file
   local temp_file="${datasources_file}.tmp"
 
-  # Insert the new entry before the closing </component> tag
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS sed
-    sed "s|</component>|${datasource_entry}\n  </component>|" "$datasources_file" > "$temp_file"
-  else
-    # Linux sed
-    sed "s|</component>|${datasource_entry}\n  </component>|" "$datasources_file" > "$temp_file"
-  fi
+  # Insert the new entry before the closing </component> tag using awk
+  awk -v entry="$datasource_entry" '
+    /<\/component>/ {
+      print entry
+      print ""
+    }
+    { print }
+  ' "$datasources_file" > "$temp_file"
 
   # Replace the original file
   mv "$temp_file" "$datasources_file"

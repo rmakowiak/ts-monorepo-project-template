@@ -12,7 +12,7 @@ process.env.SECURITY_CORS_ORIGINS = "*";
 process.env.SECURITY_RATE_LIMIT_ENABLED = "false"; // Disabled for tests
 process.env.SECURITY_MAX_BODY_SIZE = "1048576"; // 1MB
 
-describe("Security Features (Integration)", () => {
+describe("Security Features (Component)", () => {
   let app: INestApplication;
   let adminToken: string;
 
@@ -193,7 +193,7 @@ describe("Security Features (Integration)", () => {
  * Note: These tests run in a separate describe block with their own app instance
  * because rate limiting must be ENABLED (unlike the main test suite where it's disabled)
  */
-describe("Rate Limiting (Integration)", () => {
+describe("Rate Limiting (Component)", () => {
   let app: INestApplication;
   let adminToken: string;
 

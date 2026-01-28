@@ -5,6 +5,8 @@ import { AppModule } from "~/app.module";
 import { AppConfigService } from "~/shared/config/app-config.service";
 import { createSecurityMiddleware } from "~/shared/security/security.middleware";
 import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
+import { PrismaService } from "~/database/prisma.service";
+import { MockPrismaService } from "./mock-prisma.service";
 
 export interface TestAppOptions {
   /**
@@ -14,14 +16,14 @@ export interface TestAppOptions {
   useValidation?: boolean;
 
   /**
-   * Whether to use in-memory repositories (for integration tests)
+   * Whether to use in-memory repositories (for component tests)
    * @default true
    */
   useInMemoryRepositories?: boolean;
 }
 
 /**
- * Creates a NestJS application instance configured for E2E testing
+ * Creates a NestJS application instance configured for component testing
  * Applies the same configuration as main.ts (validation pipe, etc.)
  *
  * @param options - Configuration options for the test app
@@ -45,9 +47,23 @@ export async function createTestApp(
 ): Promise<INestApplication> {
   const { useValidation = true, useInMemoryRepositories = true } = options;
 
-  const moduleBuilder = Test.createTestingModule({
+  let moduleBuilder = Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  });
+
+  // Override database connection with mock for component tests
+  moduleBuilder = moduleBuilder
+    .overrideProvider(PrismaService)
+    .useClass(MockPrismaService);
+
+  // Override repositories with in-memory implementations for component tests
+  if (useInMemoryRepositories) {
+    moduleBuilder = moduleBuilder
+      .overrideProvider("ProductRepository")
+      .useClass(InMemoryProductRepository);
+  }
+
+  const moduleFixture: TestingModule = await moduleBuilder.compile();
 
   const app = moduleFixture.createNestApplication();
 
@@ -63,13 +79,6 @@ export async function createTestApp(
     },
   });
   securityMiddleware.forEach((middleware) => app.use(middleware));
-
-  // Override repositories with in-memory implementations for integration tests
-  if (useInMemoryRepositories) {
-    moduleBuilder
-      .overrideProvider("ProductRepository")
-      .useClass(InMemoryProductRepository);
-  }
 
   // Configure CORS (same as main.ts)
   const corsOrigins = config.security.SECURITY_CORS_ORIGINS;
@@ -87,8 +96,6 @@ export async function createTestApp(
       limit: config.security.SECURITY_MAX_BODY_SIZE,
     }),
   );
-
-  const moduleFixture: TestingModule = await moduleBuilder.compile();
 
   // Apply same configuration as main.ts
   if (useValidation) {

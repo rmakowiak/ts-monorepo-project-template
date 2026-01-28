@@ -980,7 +980,7 @@ See [Configuration](#configuration) section and `CONFIG.md` for details.
 
 ## Testing
 
-This service uses a **comprehensive, strategic testing approach** with separate **unit tests** and **integration tests** to achieve high coverage without excessive tests.
+This service uses a **comprehensive, strategic testing approach** with separate **unit tests** and **component tests** to achieve high coverage without excessive tests.
 
 ### Testing Philosophy
 
@@ -988,8 +988,8 @@ This service uses a **comprehensive, strategic testing approach** with separate 
 
 - ✅ **Meaningful over exhaustive**: Focus on valuable tests, not test count
 - ✅ **ECP & BVA**: Use Equivalence Class Partitioning and Boundary Value Analysis for strategic coverage
-- ✅ **Separation of concerns**: Unit tests for logic, integration tests for HTTP flow
-- ✅ **High coverage with focus**: 100% unit coverage on business logic, 93%+ integration coverage on API layer
+- ✅ **Separation of concerns**: Unit tests for logic, component tests for HTTP flow
+- ✅ **High coverage with focus**: 100% unit coverage on business logic, 93%+ component coverage on API layer
 
 ### Test Structure
 
@@ -1001,10 +1001,10 @@ test/
 │   ├── mock-logger.factory.ts  # Mock PinoLogger
 │   ├── jwt.factory.ts          # JWT token generation
 │   └── test-app.factory.ts     # NestJS app factory
-├── integration/                 # HTTP integration tests
-│   ├── product.integration-spec.ts
-│   └── health.integration-spec.ts
-└── jest-integration.json        # Integration test config
+├── component/                   # HTTP component tests
+│   ├── product.component.spec.ts
+│   └── health.component.spec.ts
+└── jest-component.json          # Component test config
 
 src/
 └── */                           # Co-located unit tests
@@ -1022,7 +1022,7 @@ src/
    - Authorization (Guards)
    - Pure logic without HTTP concerns
 
-2. **Integration Test Coverage: 93.91%**
+2. **Component Test Coverage: 93.91%**
    - Full HTTP request/response cycle
    - Controllers
    - Exception filters
@@ -1032,24 +1032,24 @@ src/
 
 **Excluded from Unit Test Coverage:**
 
-Files covered by integration tests or infrastructure:
+Files covered by component tests or infrastructure:
 
 ```json
 {
   "collectCoverageFrom": [
     "**/*.ts",
     "!**/*.spec.ts", // Test files
-    "!**/*.dto.ts", // DTOs (validated in integration)
+    "!**/*.dto.ts", // DTOs (validated in component tests)
     "!**/*.entity.ts", // Domain types
     "!**/*.port.ts", // Interfaces
     "!**/*.error.ts", // Domain errors
     "!**/main.ts", // Bootstrap
     "!**/*.module.ts", // Module definitions
-    "!**/*.controller.ts", // Covered by integration tests
-    "!**/*.filter.ts", // Covered by integration tests
-    "!**/*.decorator.ts", // Covered by integration tests
+    "!**/*.controller.ts", // Covered by component tests
+    "!**/*.filter.ts", // Covered by component tests
+    "!**/*.decorator.ts", // Covered by component tests
     "!**/config/**", // Configuration
-    "!**/indicators/**", // Health indicators (integration)
+    "!**/indicators/**", // Health indicators (component tests)
     "!**/adapters/simple-*.ts", // Simple adapters
     "!**/auth/application/auth.service.ts" // Simple wrapper
   ]
@@ -1063,12 +1063,12 @@ Files covered by integration tests or infrastructure:
 pnpm test:unit              # Run unit tests
 pnpm test:cov:unit          # With coverage report
 
-# Integration Tests (31 tests - 93.91% coverage)
-pnpm test:integration       # Run integration tests
-pnpm test:integration:cov   # With coverage report
+# Component Tests (31 tests - 93.91% coverage)
+pnpm test:component         # Run component tests
+pnpm test:component:cov     # With coverage report
 
 # All Tests (103 tests total)
-pnpm test:all               # Run both unit + integration
+pnpm test:all               # Run both unit + component
 
 # Development
 pnpm test:watch             # Watch mode
@@ -1243,11 +1243,11 @@ describe("JwtAuthGuard", () => {
 });
 ```
 
-### Writing Integration Tests
+### Writing Component Tests
 
-Integration tests focus on **full HTTP request/response cycles** through the actual application.
+Component tests focus on **full HTTP request/response cycles** through the actual application.
 
-**Location**: `test/integration/*.integration-spec.ts`
+**Location**: `test/component/*.component.spec.ts`
 
 **Setup:**
 
@@ -1261,7 +1261,7 @@ import {
   BOUNDARY_VALUES,
 } from "../fixtures/product.fixtures";
 
-describe("Product API (Integration)", () => {
+describe("Product API (Component)", () => {
   let app: INestApplication;
   let adminToken: string;
   let userToken: string;
@@ -1485,9 +1485,9 @@ Test at boundaries where behavior changes:
 pnpm test:cov:unit
 open coverage/index.html
 
-# Integration test coverage (93.91%)
-pnpm test:integration:cov
-open coverage-integration/index.html
+# Component test coverage (93.91%)
+pnpm test:component:cov
+open coverage-component/index.html
 ```
 
 **Coverage Thresholds:**
@@ -1514,18 +1514,18 @@ Unit tests enforce minimum thresholds:
 - Use ECP to identify test classes (valid/invalid scenarios)
 - Use BVA to test boundary conditions
 - Co-locate unit tests with source files
-- Put integration tests in `test/integration/`
+- Put component tests in `test/component/`
 - Use test fixtures for reusable test data
 - Test error paths and edge cases
 - Mock external dependencies in unit tests
-- Use real HTTP requests in integration tests
+- Use real HTTP requests in component tests
 - Name tests clearly: `should [action] when [condition] (ECP/BVA: [category])`
 
 **❌ DON'T:**
 
 - Write redundant tests that cover the same equivalence class
 - Test implementation details (private methods)
-- Mix unit and integration test concerns
+- Mix unit and component test concerns
 - Skip error case testing
 - Hardcode test data (use fixtures)
 - Test framework code (controllers in unit tests)

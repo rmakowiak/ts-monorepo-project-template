@@ -61,7 +61,7 @@ Built with clean architecture using:
 - **Hexagonal architecture** (ports and adapters pattern)
 - **Domain-driven design** principles
 - **Type-safe** domain models and DTOs
-- **Comprehensive testing** (unit + integration)
+- **Comprehensive testing** (unit + component)
 
 See [CLAUDE.md](./CLAUDE.md) for detailed architectural documentation.
 
@@ -77,9 +77,9 @@ pnpm build            # Build for production
 pnpm start            # Run production build
 
 # Testing
-pnpm test:unit        # Run unit tests (100% coverage)
-pnpm test:integration # Run integration tests (93%+ coverage)
-pnpm test:all         # Run all tests
+pnpm test:unit      # Run unit tests (100% coverage)
+pnpm test:component # Run component tests (93%+ coverage)
+pnpm test:all       # Run all tests
 
 # Code Quality
 pnpm lint             # Run ESLint

@@ -3,7 +3,7 @@ import { Transform } from "class-transformer";
 
 export class DatabaseConfigSchema {
   @IsString()
-  @Matches(/^postgresql:\/\//)
+  @Matches(/^postgres(ql)?:\/\//)
   readonly DATABASE_URL!: string;
 
   @IsString()

@@ -135,6 +135,54 @@ When adding a new service to the monorepo:
 4. Add any environment files that should be copied to worktrees
 5. Document service-specific setup in its own `CLAUDE.md`
 
+## Testing Strategy
+
+This project uses a three-tier testing approach:
+
+```
+┌─────────────────────────────────────┐
+│       Integration Tests              │  ← HTTP → Service → Real DB
+├─────────────────────────────────────┤
+│       Component Tests                │  ← HTTP → Service → Mocked DB
+├─────────────────────────────────────┤
+│          Unit Tests                  │  ← Individual functions/classes
+└─────────────────────────────────────┘
+```
+
+### Test Types
+
+- **Unit tests** - Test individual functions/classes in isolation with mocks
+- **Component tests** - Test full service stack with mocked external dependencies (database)
+- **Integration tests** - Test full service stack with real external dependencies (database, network)
+
+### Integration Test Guidelines
+
+Integration tests verify the service integrates correctly with real external systems (database, HTTP endpoints).
+
+**Strategy: Decision Tables**
+
+- Use decision table methodology to cover critical paths
+- Keep the number of integration tests **minimal** - they are slow
+- Focus on critical integration points and edge cases
+- Each test should verify a specific integration scenario
+
+**Infrastructure:**
+
+- Uses **testcontainers** to spin up ephemeral PostgreSQL databases
+- Each test run gets a fresh database container
+- Automatic cleanup after tests complete
+- Requires Docker to be running locally
+
+**Characteristics:**
+
+- Connect to real database via testcontainers
+- Test actual HTTP endpoints (not mocked)
+- Verify database constraints, transactions, soft deletes
+- Test concurrency and race conditions
+- Slower execution than unit/component tests (60s timeout)
+
+When adding integration tests, consider if the scenario can be covered by faster component tests first.
+
 ## Environment Variables
 
 Standard environment variables across services:

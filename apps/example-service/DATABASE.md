@@ -460,16 +460,30 @@ describe("Product API (Component)", () => {
 });
 ```
 
-### E2E Tests (CI Only)
+### Integration Tests
 
-E2E tests use a separate test database:
+Integration tests use **testcontainers** to spin up ephemeral PostgreSQL databases:
 
 ```bash
-# Test database runs on port 5433
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/example_test?schema=public
+# Run integration tests (automatically manages test database)
+pnpm test:integration
 
-# Tests clean up after themselves
+# With coverage report
+pnpm test:integration:cov
 ```
+
+**How it works:**
+
+- Each test run starts a fresh PostgreSQL 16 container
+- Prisma migrations run automatically
+- Tests execute against real database
+- Container stops after tests complete
+- No manual database setup required
+
+**Requirements:**
+
+- Docker must be running locally
+- Tests run in CI environments with Docker support
 
 ## Troubleshooting
 

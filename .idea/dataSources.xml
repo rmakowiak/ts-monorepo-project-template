@@ -15,16 +15,12 @@
       <jdbc-url>jdbc:postgresql://localhost:5433/example_test</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <!-- Worktree Database (chore-rename-integration-to-component-4) -->
-    <data-source source="LOCAL" name="example-dev-chore-rename-integration-to-component-4" uuid="9249ACF0-2B1D-4DE8-9AFC-C7A1D41EDA5B">
+    <data-source source="LOCAL" name="example-dev-chore-e2e-tests" uuid="8886A480-6148-4AC2-8D4F-42493365B68E">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://localhost:5432/example_dev_chore_rename_integration_to_component_4</jdbc-url>
+      <jdbc-url>jdbc:postgresql://localhost:5432/example_dev_chore_e2e_tests</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
-      <user-name>postgres</user-name>
-      <password>postgres</password>
     </data-source>
-
   </component>
 </project>

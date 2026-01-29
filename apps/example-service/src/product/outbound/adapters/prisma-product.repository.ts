@@ -1,12 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { PinoLogger } from "nestjs-pino";
-import { Product as PrismaProduct } from "@prisma/client";
+import { Product as PrismaProduct, Prisma } from "@prisma/client";
 import { PrismaService } from "~/database/prisma.service";
 import { Product, ProductId } from "../../domain/product.entity";
 import {
   ProductRepository,
   QueryOptions,
 } from "../ports/product-repository.port";
+import { ProductAlreadyExistsError } from "../../domain/product.error";
 
 /**
  * Prisma implementation of ProductRepository
@@ -41,31 +42,50 @@ export class PrismaProductRepository implements ProductRepository {
       "Saving product",
     );
 
-    const saved = await this.prisma.product.upsert({
-      where: { id: product.id },
-      create: {
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        sku: product.sku,
-        price: product.price,
-        stock: product.stock,
-        isActive: true,
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-      },
-      update: {
-        name: product.name,
-        description: product.description,
-        sku: product.sku,
-        price: product.price,
-        stock: product.stock,
-        updatedAt: product.updatedAt,
-      },
-    });
+    try {
+      const saved = await this.prisma.product.upsert({
+        where: { id: product.id },
+        create: {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          sku: product.sku,
+          price: product.price,
+          stock: product.stock,
+          isActive: true,
+          createdAt: product.createdAt,
+          updatedAt: product.updatedAt,
+        },
+        update: {
+          name: product.name,
+          description: product.description,
+          sku: product.sku,
+          price: product.price,
+          stock: product.stock,
+          updatedAt: product.updatedAt,
+        },
+      });
 
-    this.logger.info({ productId: saved.id }, "Product saved successfully");
-    return this.toDomain(saved);
+      this.logger.info({ productId: saved.id }, "Product saved successfully");
+      return this.toDomain(saved);
+    } catch (error) {
+      // Handle Prisma unique constraint violations
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const target = error.meta?.target;
+        if (Array.isArray(target) && target.includes("sku")) {
+          this.logger.warn(
+            { sku: product.sku },
+            "SKU unique constraint violation",
+          );
+          throw new ProductAlreadyExistsError(product.sku);
+        }
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async findById(id: ProductId): Promise<Product | null> {
@@ -117,7 +137,10 @@ export class PrismaProductRepository implements ProductRepository {
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
         where: { isActive: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "asc" }, // Secondary sort for stable ordering
+        ],
         take: limit,
         skip: offset,
       }),

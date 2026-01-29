@@ -1,0 +1,28 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testRegex": ".integration.spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "collectCoverageFrom": [
+    "src/**/*.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.dto.ts",
+    "!src/**/*.entity.ts",
+    "!src/**/*.port.ts",
+    "!src/**/*.error.ts",
+    "!src/main.ts",
+    "!src/**/*.module.ts",
+    "!src/**/config/**",
+    "!src/**/adapters/in-memory-*.ts"
+  ],
+  "coverageDirectory": "coverage-integration",
+  "testEnvironment": "node",
+  "setupFiles": ["<rootDir>/test/setup-integration-tests.ts"],
+  "testTimeout": 60000,
+  "maxWorkers": 1,
+  "moduleNameMapper": {
+    "^~/(.*)$": "<rootDir>/src/$1"
+  }
+}

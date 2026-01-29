@@ -980,7 +980,7 @@ See [Configuration](#configuration) section and `CONFIG.md` for details.
 
 ## Testing
 
-This service uses a **comprehensive, strategic testing approach** with separate **unit tests** and **component tests** to achieve high coverage without excessive tests.
+This service uses a **three-tier testing approach** with separate **unit tests**, **component tests**, and **integration tests** to achieve comprehensive coverage strategically.
 
 ### Testing Philosophy
 
@@ -988,33 +988,39 @@ This service uses a **comprehensive, strategic testing approach** with separate 
 
 - ✅ **Meaningful over exhaustive**: Focus on valuable tests, not test count
 - ✅ **ECP & BVA**: Use Equivalence Class Partitioning and Boundary Value Analysis for strategic coverage
-- ✅ **Separation of concerns**: Unit tests for logic, component tests for HTTP flow
+- ✅ **Separation of concerns**: Unit tests for logic, component tests for HTTP flow, integration tests for database
 - ✅ **High coverage with focus**: 100% unit coverage on business logic, 93%+ component coverage on API layer
+- ✅ **Minimal integration tests**: Decision table approach for critical database scenarios only
 
 ### Test Structure
 
 ```
 test/
-├── fixtures/                    # Test data and boundary values
-│   └── product.fixtures.ts      # Product test data, BOUNDARY_VALUES
-├── helpers/                     # Reusable test utilities
-│   ├── mock-logger.factory.ts  # Mock PinoLogger
-│   ├── jwt.factory.ts          # JWT token generation
-│   └── test-app.factory.ts     # NestJS app factory
-├── component/                   # HTTP component tests
+├── fixtures/                          # Test data and boundary values
+│   └── product.fixtures.ts            # Product test data, BOUNDARY_VALUES
+├── helpers/                           # Reusable test utilities
+│   ├── mock-logger.factory.ts        # Mock PinoLogger
+│   ├── jwt.factory.ts                # JWT token generation
+│   ├── test-app.factory.ts           # NestJS app factory (mocked DB)
+│   ├── integration-test-app.factory.ts # App factory with real DB
+│   └── test-db.factory.ts            # Testcontainers setup
+├── component/                         # HTTP component tests (mocked DB)
 │   ├── product.component.spec.ts
 │   └── health.component.spec.ts
-└── jest-component.json          # Component test config
+├── integration/                       # Integration tests (real DB)
+│   └── product.integration.spec.ts
+├── jest-component.json                # Component test config
+└── jest-integration.json              # Integration test config
 
 src/
-└── */                           # Co-located unit tests
-    ├── **/*.spec.ts             # Unit tests next to source
-    └── **/*.ts                  # Source files
+└── */                                 # Co-located unit tests
+    ├── **/*.spec.ts                   # Unit tests next to source
+    └── **/*.ts                        # Source files
 ```
 
 ### Coverage Strategy
 
-**Two Separate Coverage Reports:**
+**Three Separate Test Suites:**
 
 1. **Unit Test Coverage: 100%**
    - Business logic (Services)
@@ -1028,7 +1034,15 @@ src/
    - Exception filters
    - Validation pipes
    - Authentication flow
-   - End-to-end scenarios
+   - End-to-end scenarios with mocked database
+
+3. **Integration Test Coverage: Database-specific**
+   - Real PostgreSQL database (testcontainers)
+   - Database constraints (unique, foreign keys)
+   - Concurrency and race conditions
+   - Soft delete behavior
+   - Decimal precision handling
+   - Pagination performance
 
 **Excluded from Unit Test Coverage:**
 
@@ -1067,8 +1081,13 @@ pnpm test:cov:unit          # With coverage report
 pnpm test:component         # Run component tests
 pnpm test:component:cov     # With coverage report
 
-# All Tests (103 tests total)
-pnpm test:all               # Run both unit + component
+# Integration Tests (8 tests - database integration)
+pnpm test:integration       # Run integration tests (requires Docker)
+pnpm test:integration:cov   # With coverage report
+
+# All Tests (111 tests total)
+pnpm test:all               # Run unit + component tests
+pnpm test:ci                # Run all tests including integration
 
 # Development
 pnpm test:watch             # Watch mode
@@ -1476,6 +1495,130 @@ Test at boundaries where behavior changes:
 - **Pagination**: limit=0, limit=1, offset at total count
 - **String Length**: maxLength-1, maxLength, maxLength+1
 
+### Writing Integration Tests
+
+Integration tests verify the service integrates correctly with **real external systems** (PostgreSQL database). Uses **testcontainers** to manage ephemeral databases.
+
+**Location**: `test/integration/*.integration.spec.ts`
+
+**Setup Pattern**:
+
+```typescript
+import { INestApplication } from "@nestjs/common";
+import { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
+import request from "supertest";
+import { PrismaService } from "~/database/prisma.service";
+import {
+  startPostgreSqlContainer,
+  runMigrations,
+  cleanDatabase,
+} from "../helpers/test-db.factory";
+import { createIntegrationTestApp } from "../helpers/integration-test-app.factory";
+
+describe("Product API (Integration)", () => {
+  let app: INestApplication;
+  let container: StartedPostgreSqlContainer;
+  let prisma: PrismaService;
+  let databaseUrl: string;
+
+  beforeAll(async () => {
+    // Start PostgreSQL testcontainer
+    container = await startPostgreSqlContainer();
+    databaseUrl = container.getConnectionString();
+
+    // Run Prisma migrations
+    await runMigrations(databaseUrl);
+
+    // Create app with real database
+    app = await createIntegrationTestApp({ databaseUrl });
+    prisma = app.get(PrismaService);
+  });
+
+  afterAll(async () => {
+    await app?.close();
+    await container?.stop();
+  });
+
+  beforeEach(async () => {
+    // Clean database for test isolation
+    await cleanDatabase(databaseUrl);
+  });
+
+  // Tests here...
+});
+```
+
+**Example: Testing Database Constraints**:
+
+```typescript
+it("should enforce unique SKU constraint at database level", async () => {
+  // Arrange
+  const dto = createTestProductDto({ sku: "UNIQUE-SKU-001" });
+
+  // Act - Create first product
+  await request(app.getHttpServer())
+    .post("/products")
+    .set("Authorization", `Bearer ${adminToken}`)
+    .send(dto)
+    .expect(201);
+
+  // Act - Try to create second product with same SKU
+  await request(app.getHttpServer())
+    .post("/products")
+    .set("Authorization", `Bearer ${adminToken}`)
+    .send(dto)
+    .expect(409); // Conflict due to database constraint
+});
+```
+
+**Example: Testing Soft Delete**:
+
+```typescript
+it("should soft delete product and exclude from queries", async () => {
+  // Arrange - Create product
+  const createResponse = await request(app.getHttpServer())
+    .post("/products")
+    .set("Authorization", `Bearer ${adminToken}`)
+    .send(dto)
+    .expect(201);
+
+  // Act - Delete product
+  await request(app.getHttpServer())
+    .delete(`/products/${createResponse.body.id}`)
+    .set("Authorization", `Bearer ${adminToken}`)
+    .expect(204);
+
+  // Assert - Verify isActive=false in database
+  const dbProduct = await prisma.product.findUnique({
+    where: { id: createResponse.body.id },
+  });
+  expect(dbProduct.isActive).toBe(false);
+
+  // Assert - Verify excluded from API queries
+  await request(app.getHttpServer())
+    .get(`/products/${createResponse.body.id}`)
+    .set("Authorization", `Bearer ${userToken}`)
+    .expect(404);
+});
+```
+
+**Decision Table for Integration Tests**:
+
+| Scenario            | Validates                          | Why Integration Test Needed                 |
+| ------------------- | ---------------------------------- | ------------------------------------------- |
+| Duplicate SKU       | PostgreSQL unique constraint       | In-memory repo can't test actual constraint |
+| Concurrent creation | Race condition handling            | Tests actual database locking               |
+| Soft delete         | isActive filtering in queries      | Verifies database indexes work correctly    |
+| Decimal precision   | Prisma Decimal → number conversion | Tests actual type conversion                |
+| Pagination          | Query performance with real data   | Tests SQL OFFSET/LIMIT efficiency           |
+
+**Requirements**:
+
+- Docker must be running locally
+- Tests automatically download postgres:16-alpine image
+- Each test run gets fresh database container
+- Slower than unit/component tests (60s timeout)
+
 ### Coverage Reports
 
 **View Coverage:**
@@ -1488,6 +1631,10 @@ open coverage/index.html
 # Component test coverage (93.91%)
 pnpm test:component:cov
 open coverage-component/index.html
+
+# Integration test coverage (database-specific)
+pnpm test:integration:cov
+open coverage-integration/index.html
 ```
 
 **Coverage Thresholds:**
@@ -1515,10 +1662,13 @@ Unit tests enforce minimum thresholds:
 - Use BVA to test boundary conditions
 - Co-locate unit tests with source files
 - Put component tests in `test/component/`
+- Put integration tests in `test/integration/`
 - Use test fixtures for reusable test data
 - Test error paths and edge cases
 - Mock external dependencies in unit tests
 - Use real HTTP requests in component tests
+- Use real database in integration tests (testcontainers)
+- Keep integration tests minimal (decision table approach)
 - Name tests clearly: `should [action] when [condition] (ECP/BVA: [category])`
 
 **❌ DON'T:**

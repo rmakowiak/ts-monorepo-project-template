@@ -2,18 +2,18 @@
 
 This service is built with **clean architecture** (hexagonal architecture) using the **ports and adapters pattern**. It provides a production-ready starting point for building scalable, testable, and maintainable NestJS applications.
 
+**For comprehensive architectural patterns, testing strategies, best practices, and configuration patterns**, see the [root CLAUDE.md](../../CLAUDE.md).
+
 ## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
 - [Project Structure](#project-structure)
-- [Core Concepts](#core-concepts)
-- [Module Structure](#module-structure)
-- [Dependency Flow](#dependency-flow)
-- [Logging Strategy](#logging-strategy)
-- [Development Workflow - Git Worktrees](#development-workflow---git-worktrees)
 - [How to Extend](#how-to-extend)
-- [Best Practices](#best-practices)
 - [Testing](#testing)
+- [Authentication & Authorization](#authentication--authorization)
+- [API Documentation](#api-documentation)
+- [Configuration](#configuration)
+- [Running the Service](#running-the-service)
 
 ---
 
@@ -51,6 +51,8 @@ This service follows **hexagonal architecture** principles:
 - ✅ **Flexible**: Swap implementations without touching business logic
 - ✅ **Independent**: Domain logic doesn't depend on frameworks or databases
 - ✅ **Maintainable**: Clear separation of concerns
+
+**For detailed architectural patterns** (ports and adapters, module structure, dependency flow), see [root CLAUDE.md - Service Architecture Patterns](../../CLAUDE.md#service-architecture-patterns).
 
 ---
 
@@ -117,552 +119,13 @@ src/
 
 ---
 
-## Core Concepts
-
-### 1. Ports and Adapters
-
-**Port**: An interface that defines what the application needs from the outside world.
-
-```typescript
-// Port (interface)
-export type ProductRepository = {
-  save(product: Product): Promise<Product>;
-  findById(id: ProductId): Promise<Product | null>;
-  findAll(
-    options?: QueryOptions,
-  ): Promise<{ products: Product[]; total: number }>;
-  delete(id: ProductId): Promise<void>;
-};
-```
-
-**Adapter**: A concrete implementation of a port.
-
-```typescript
-// Adapter (implementation)
-@Injectable()
-export class InMemoryProductRepository implements ProductRepository {
-  private products = new Map<ProductId, Product>();
-
-  async save(product: Product): Promise<Product> {
-    this.products.set(product.id, product);
-    return product;
-  }
-  // ... other methods
-}
-```
-
-**Module Registration**: Bind ports to adapters via dependency injection.
-
-```typescript
-@Module({
-  providers: [
-    ProductService,
-    {
-      provide: "ProductRepository",
-      useClass: InMemoryProductRepository,
-    },
-  ],
-})
-export class ProductModule {}
-```
-
-**Service Usage**: Services depend on ports, not adapters.
-
-```typescript
-@Injectable()
-export class ProductService {
-  constructor(
-    @Inject("ProductRepository")
-    private readonly repository: ProductRepository, // Port, not adapter
-  ) {}
-}
-```
-
-### 2. Domain Layer
-
-**Entities**: Immutable, type-safe domain models.
-
-```typescript
-export type Product = Readonly<{
-  id: ProductId;
-  name: string;
-  price: number;
-  stock: number;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
-```
-
-**Domain Errors**: Custom errors for business rule violations.
-
-```typescript
-export class ProductNotFoundError extends Error {
-  constructor(id: ProductId) {
-    super(`Product not found: ${id}`);
-    this.name = "ProductNotFoundError";
-  }
-}
-```
-
-### 3. Application Layer
-
-**Services**: Orchestrate business logic and coordinate between ports.
-
-```typescript
-@Injectable()
-export class ProductService {
-  constructor(
-    @Inject("ProductRepository")
-    private readonly repository: ProductRepository,
-    private readonly logger: PinoLogger,
-  ) {}
-
-  async createProduct(dto: CreateProductDto): Promise<Product> {
-    this.logger.info({ sku: dto.sku }, "Creating product");
-
-    // Business logic
-    const product: Product = {
-      id: randomUUID(),
-      ...dto,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return this.repository.save(product);
-  }
-}
-```
-
-### 4. Inbound Layer
-
-**Controllers**: Handle HTTP requests, validate input, call services.
-
-```typescript
-@Controller("products")
-@UseGuards(JwtAuthGuard, RolesGuard)
-export class ProductController {
-  constructor(private readonly productService: ProductService) {}
-
-  @Post()
-  @Roles("admin")
-  @ApiOperation({ summary: "Create a new product" })
-  async create(@Body() dto: CreateProductDto): Promise<ProductResponseDto> {
-    const product = await this.productService.createProduct(dto);
-    return this.toDto(product);
-  }
-}
-```
-
-**Exception Filters**: Map domain errors to HTTP responses.
-
-```typescript
-@Catch(ProductNotFoundError)
-export class ProductExceptionFilter implements ExceptionFilter {
-  catch(exception: ProductNotFoundError, host: ArgumentsHost) {
-    const response = host.switchToHttp().getResponse<Response>();
-    response.status(HttpStatus.NOT_FOUND).json({
-      statusCode: HttpStatus.NOT_FOUND,
-      message: exception.message,
-    });
-  }
-}
-```
-
----
-
-## Module Structure
-
-Every feature module follows this structure:
-
-```
-feature-name/
-├── feature-name.module.ts           # Module definition
-├── guards/                          # At module root (if needed)
-│   └── feature-specific.guard.ts
-├── decorators/                      # At module root (if needed)
-│   └── feature-specific.decorator.ts
-├── inbound/                         # Controllers, filters (entry points)
-│   ├── feature.controller.ts
-│   └── feature-exception.filter.ts
-├── application/                     # Services, DTOs (business logic)
-│   ├── feature.service.ts
-│   └── dto/
-│       ├── create-feature.dto.ts
-│       └── feature-response.dto.ts
-├── domain/                          # Entities, errors (pure domain)
-│   ├── feature.entity.ts
-│   └── feature.error.ts
-└── outbound/                        # Ports and adapters
-    ├── ports/
-    │   └── feature-repository.port.ts
-    └── adapters/
-        └── concrete-feature.repository.ts
-```
-
-**Important**: Guards, decorators, and filters go at the **module root**, NOT in `inbound/`. Only controllers and resolvers go in `inbound/`.
-
----
-
-## Dependency Flow
-
-Dependencies flow **inward**:
-
-```
-Controller → Service → Repository Port
-                           ↓
-                       Repository Adapter
-```
-
-- Controllers depend on Services
-- Services depend on Ports (interfaces)
-- Adapters implement Ports
-- Adapters are injected via DI
-
-**Never**:
-
-- Domain shouldn't know about Services
-- Services shouldn't know about Controllers
-- Ports shouldn't know about Adapters
-
----
-
-## Logging Strategy
-
-This service uses **Pino** via `nestjs-pino` for structured, high-performance logging.
-
-### Global Logger Configuration
-
-```typescript
-// main.ts
-app.useLogger(app.get(Logger));
-```
-
-### Service-Level Logging
-
-```typescript
-@Injectable()
-export class ProductService {
-  constructor(private readonly logger: PinoLogger) {
-    this.logger.setContext(ProductService.name);
-  }
-
-  async createProduct(dto: CreateProductDto): Promise<Product> {
-    this.logger.info({ sku: dto.sku, name: dto.name }, "Creating product");
-
-    try {
-      const product = await this.repository.save(product);
-      this.logger.info(
-        { productId: product.id },
-        "Product created successfully",
-      );
-      return product;
-    } catch (error) {
-      this.logger.error({ error, sku: dto.sku }, "Failed to create product");
-      throw error;
-    }
-  }
-}
-```
-
-### Logging Best Practices
-
-1. **Set context**: Always call `logger.setContext(ClassName.name)` in constructor
-2. **Structured data**: Use objects for context: `logger.info({ userId, action }, 'message')`
-3. **Log levels**:
-   - `fatal`: Application crash
-   - `error`: Error that needs attention
-   - `warn`: Something unexpected but recoverable
-   - `info`: Important business events
-   - `debug`: Detailed information for debugging
-   - `trace`: Very verbose debugging
-4. **Repository logging**: Log all database operations
-5. **Service logging**: Log business decisions and orchestration
-6. **Controller logging**: Usually not needed (HTTP logging is automatic)
-
-### Local Development
-
-Logs are pretty-printed in development:
-
-```
-[10:30:15] INFO (ProductService): Creating product
-    sku: "MOUSE-001"
-    name: "Wireless Mouse"
-[10:30:15] INFO (ProductService): Product created successfully
-    productId: "550e8400-e29b-41d4-a716-446655440000"
-```
-
-### Production
-
-Logs are JSON in production for log aggregation:
-
-```json
-{
-  "level": "info",
-  "time": 1642242615,
-  "context": "ProductService",
-  "sku": "MOUSE-001",
-  "msg": "Creating product"
-}
-```
-
----
-
-## Development Workflow - Git Worktrees
-
-This monorepo supports **git worktrees** for working on multiple branches simultaneously. The `/worktree` skill automates worktree creation with intelligent port allocation and environment setup.
-
-### Why Use Worktrees?
-
-**Problem**: Switching branches disrupts your development flow:
-
-- Loses running dev server state
-- Requires reinstalling dependencies if package.json changed
-- Can't compare behavior between branches easily
-
-**Solution**: Worktrees let you have multiple checkouts of the same repo:
-
-- Keep `main` running on port 8000 while developing on port 8001
-- Compare API behavior between branches side-by-side
-- Run tests on one branch while coding on another
-
-### Quick Start
-
-```bash
-# Create worktree for a feature branch
-/worktree create feat/new-api
-
-# Switch to the new worktree
-cd ../monorepo-project-template.worktree.feat-new-api
-
-# Start development server (automatically uses port 8001)
-cd apps/example-service
-pnpm dev
-
-# Work on your feature...
-
-# When done, return to main repo and close worktree
-cd /path/to/monorepo-project-template
-/worktree close feat-new-api
-```
-
-### Port Allocation Strategy
-
-Each worktree gets unique ports to avoid conflicts:
-
-| Worktree     | PORT | OTEL_METRICS_PORT | OTEL_EXPORTER_OTLP_ENDPOINT |
-| ------------ | ---- | ----------------- | --------------------------- |
-| Main repo    | 8000 | 9464              | http://localhost:4318       |
-| 1st worktree | 8001 | 9465              | http://localhost:4318       |
-| 2nd worktree | 8002 | 9466              | http://localhost:4318       |
-| 3rd worktree | 8003 | 9467              | http://localhost:4318       |
-
-**Note**: Infrastructure services (Jaeger, Prometheus, Grafana) run on shared ports and are **shared across all worktrees**.
-
-### Automatic Environment Setup
-
-When creating a worktree, the skill automatically:
-
-1. **Creates git worktree** as sibling directory
-2. **Allocates unique ports** from the registry
-3. **Copies important files** per manifest:
-   - `.env.local` (ports updated automatically)
-   - `requests/http-client.env.json` (baseUrl updated to new port)
-   - Any other tracked credential/config files
-4. **Transforms files** to use new ports
-5. **Installs dependencies** with `pnpm install`
-6. **Builds the project** with `pnpm run build`
-7. **Updates registry** to track worktree and prevent port collisions
-
-**Files NOT copied:**
-
-- `node_modules/` (always reinstalled)
-- Build output (`dist/`, `.next/`)
-- Git-tracked files (automatically present)
-
-### File Manifest
-
-The worktree scripts uses a declarative manifest to know which files to copy. See `scripts/worktree/config/file-manifest.json`:
-
-```json
-{
-  "version": "1.0.0",
-  "apps": {
-    "example-service": {
-      "files": [
-        {
-          "source": ".env.local",
-          "destination": ".env.local",
-          "required": false,
-          "transform": "update_ports",
-          "description": "Local environment configuration with ports"
-        },
-        {
-          "source": "requests/http-client.env.json",
-          "destination": "requests/http-client.env.json",
-          "required": false,
-          "transform": "update_base_url",
-          "description": "HTTP client JWT tokens and baseUrl"
-        }
-      ]
-    }
-  }
-}
-```
-
-### CRITICAL: Maintaining the File Manifest
-
-**IMPORTANT RULE**: When you add new untracked important files that should be copied to worktrees, you **MUST** update the file manifest.
-
-**Files to include:**
-
-- ✅ Environment configs (`.env.local`, `.env.test.local`)
-- ✅ Authentication tokens (`requests/http-client.env.json`)
-- ✅ Local credentials (`cookie.txt`, API keys, certificates)
-- ✅ Local test data or fixtures that aren't in git
-
-**Files to exclude:**
-
-- ❌ `node_modules/` (always excluded, reinstalled instead)
-- ❌ Build output (`dist/`, `.turbo/`, `.next/`)
-- ❌ IDE configs (`.vscode/`, `.idea/`)
-- ❌ Git-tracked files (automatically present in worktree)
-
-**Example**: Adding a new credential file
-
-```bash
-# You add a new local file
-echo "my-secret-key" > apps/example-service/.api-key
-
-# You MUST update the manifest
-vim scripts/worktree/config/file-manifest.json
-```
-
-```json
-{
-  "version": "1.0.0",
-  "apps": {
-    "example-service": {
-      "files": [
-        {
-          "source": ".env.local",
-          "destination": ".env.local",
-          "required": false,
-          "transform": "update_ports",
-          "description": "Local environment configuration with ports"
-        },
-        {
-          "source": "requests/http-client.env.json",
-          "destination": "requests/http-client.env.json",
-          "required": false,
-          "transform": "update_base_url",
-          "description": "HTTP client JWT tokens and baseUrl"
-        },
-        {
-          "source": ".api-key",
-          "destination": ".api-key",
-          "required": false,
-          "transform": "none",
-          "description": "API key for external service"
-        }
-      ]
-    }
-  }
-}
-```
-
-### Available Commands
-
-See `scripts/worktree/README.md` for comprehensive documentation. Quick reference:
-
-```bash
-# Create worktree
-/worktree create <branch-name> [custom-name]
-
-# List all worktrees with their ports
-/worktree list
-
-# Close and cleanup worktree
-/worktree close <worktree-name> [--force]
-```
-
-### Common Workflows
-
-**Comparing branches:**
-
-```bash
-# Terminal 1: Run stable version
-cd apps/example-service
-pnpm dev  # Port 8000
-
-# Terminal 2: Create and run experimental version
-/worktree create feat/experiment
-cd ../monorepo-project-template.worktree.feat-experiment/apps/example-service
-pnpm dev  # Port 8001
-
-# Compare behavior
-curl localhost:8000/health  # Stable
-curl localhost:8001/health  # Experimental
-```
-
-**Working on multiple features:**
-
-```bash
-# Create worktrees for different features
-/worktree create feat/api-v2 api-v2
-/worktree create feat/auth-refactor auth-work
-
-# Switch between them as needed
-cd ../monorepo-project-template.worktree.api-v2
-cd ../monorepo-project-template.worktree.auth-work
-
-# List to see all active worktrees
-/worktree list
-```
-
-### Observability with Worktrees
-
-All worktrees share the same observability infrastructure:
-
-- **Jaeger** (http://localhost:16686) - View traces from all worktrees
-- **Prometheus** (http://localhost:9090) - Metrics aggregated from all ports
-- **Grafana** (http://localhost:3001) - Dashboards show all services
-
-**Tip**: Use service instance labels to differentiate:
-
-- Main repo traces tagged with `service.instance.id` including port 8000
-- Worktree traces tagged with port 8001, 8002, etc.
-
-### Troubleshooting
-
-**Port already in use:**
-
-- The skill automatically finds the next available port
-- Check which ports are allocated: `/worktree list`
-
-**File not copied to worktree:**
-
-- Check if it's in the manifest: `scripts/worktree/config/file-manifest.json`
-- Add it if needed (see "Maintaining the File Manifest" above)
-
-**Worktree out of sync:**
-
-```bash
-# Force cleanup
-/worktree close worktree-name --force
-
-# Or manually prune
-git worktree prune
-```
-
-For more details, see `scripts/worktree/README.md`.
-
----
-
 ## How to Extend
 
 ### Adding a New Module
 
-**Example**: Adding a "Category" module
+For comprehensive step-by-step guide on adding a new module (with complete code examples), see [docs/templates/service-template/MODULE_TEMPLATE.md](../../docs/templates/service-template/MODULE_TEMPLATE.md).
+
+**Quick Example: Adding a "Category" module**
 
 1. **Create folder structure**:
 
@@ -706,281 +169,20 @@ export type CategoryRepository = {
 };
 ```
 
-5. **Create adapter** (`outbound/adapters/in-memory-category.repository.ts`):
+5. **Create adapter**, **DTOs**, **service**, **controller**, **exception filter**, and **module**
 
-```typescript
-@Injectable()
-export class InMemoryCategoryRepository implements CategoryRepository {
-  private categories = new Map<CategoryId, Category>();
+See [MODULE_TEMPLATE.md](../../docs/templates/service-template/MODULE_TEMPLATE.md) for complete implementations of steps 5-11.
 
-  async save(category: Category): Promise<Category> {
-    this.logger.debug({ categoryId: category.id }, "Saving category");
-    this.categories.set(category.id, category);
-    return category;
-  }
-  // ... implement other methods
-}
-```
+**For architectural patterns and best practices**, see:
 
-6. **Create DTOs** (`application/dto/`):
-
-```typescript
-export class CreateCategoryDto {
-  @ApiProperty()
-  @IsString()
-  @MaxLength(100)
-  name!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MaxLength(500)
-  description!: string;
-}
-```
-
-7. **Create service** (`application/category.service.ts`):
-
-```typescript
-@Injectable()
-export class CategoryService {
-  constructor(
-    @Inject("CategoryRepository")
-    private readonly repository: CategoryRepository,
-    private readonly logger: PinoLogger,
-  ) {
-    this.logger.setContext(CategoryService.name);
-  }
-
-  async createCategory(dto: CreateCategoryDto): Promise<Category> {
-    this.logger.info({ name: dto.name }, "Creating category");
-    const category: Category = {
-      id: randomUUID(),
-      ...dto,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    return this.repository.save(category);
-  }
-}
-```
-
-8. **Create controller** (`inbound/category.controller.ts`):
-
-```typescript
-@ApiTags("categories")
-@Controller("categories")
-@UseGuards(JwtAuthGuard)
-export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
-
-  @Post()
-  @ApiOperation({ summary: "Create category" })
-  async create(@Body() dto: CreateCategoryDto) {
-    return this.categoryService.createCategory(dto);
-  }
-}
-```
-
-9. **Create exception filter** (`inbound/category-exception.filter.ts`):
-
-```typescript
-@Catch(CategoryNotFoundError)
-export class CategoryExceptionFilter implements ExceptionFilter {
-  catch(exception: CategoryNotFoundError, host: ArgumentsHost) {
-    const response = host.switchToHttp().getResponse<Response>();
-    response.status(HttpStatus.NOT_FOUND).json({
-      statusCode: HttpStatus.NOT_FOUND,
-      message: exception.message,
-    });
-  }
-}
-```
-
-10. **Create module** (`category.module.ts`):
-
-```typescript
-@Module({
-  imports: [SharedModule, AuthModule],
-  controllers: [CategoryController],
-  providers: [
-    CategoryService,
-    {
-      provide: "CategoryRepository",
-      useClass: InMemoryCategoryRepository,
-    },
-  ],
-  exports: [CategoryService],
-})
-export class CategoryModule {}
-```
-
-11. **Register in AppModule** (`app.module.ts`):
-
-```typescript
-@Module({
-  imports: [
-    SharedModule,
-    AuthModule,
-    HealthModule,
-    ProductModule,
-    CategoryModule, // Add here
-  ],
-})
-export class AppModule {}
-```
-
----
-
-## Best Practices
-
-### 1. Dependency Injection
-
-**✅ Good**: Inject ports, not adapters
-
-```typescript
-constructor(
-  @Inject('ProductRepository')
-  private readonly repository: ProductRepository,  // Port interface
-) {}
-```
-
-**❌ Bad**: Don't inject concrete adapters
-
-```typescript
-constructor(
-  private readonly repository: InMemoryProductRepository,  // Concrete class
-) {}
-```
-
-### 2. Domain Errors
-
-**✅ Good**: Throw domain-specific errors
-
-```typescript
-if (!product) {
-  throw new ProductNotFoundError(id);
-}
-```
-
-**❌ Bad**: Don't throw generic errors
-
-```typescript
-if (!product) {
-  throw new Error("Product not found"); // Too generic
-}
-```
-
-### 3. DTOs
-
-**✅ Good**: Use DTOs for API boundaries
-
-```typescript
-// Request DTO
-export class CreateProductDto {
-  @ApiProperty()
-  @IsString()
-  name!: string;
-}
-
-// Response DTO
-export class ProductResponseDto {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty()
-  name!: string;
-}
-```
-
-**❌ Bad**: Don't expose domain entities directly
-
-```typescript
-@Post()
-async create(@Body() product: Product): Promise<Product> {  // Bad
-  return this.service.create(product)
-}
-```
-
-### 4. Immutable Entities
-
-**✅ Good**: Use Readonly types
-
-```typescript
-export type Product = Readonly<{
-  id: ProductId;
-  name: string;
-}>;
-```
-
-**❌ Bad**: Mutable entities
-
-```typescript
-export interface Product {
-  id: string;
-  name: string;
-}
-```
-
-### 5. Module Exports
-
-Only export what other modules need:
-
-```typescript
-@Module({
-  providers: [ProductService, ProductRepository],
-  exports: [ProductService], // Only export service
-})
-export class ProductModule {}
-```
-
-### 6. Environment Variable Validation
-
-**✅ Good**: Always add new environment variables to config schemas
-
-```typescript
-// src/shared/config/schemas/app.config.schema.ts
-export class AppConfigSchema {
-  @IsUrl({ require_tld: false })
-  DATABASE_URL!: string;
-}
-
-// Then use via config service
-const dbUrl = this.config.app.DATABASE_URL; // Type-safe, validated
-```
-
-**❌ Bad**: Don't read environment variables directly
-
-```typescript
-// Bad - no validation, not type-safe
-const dbUrl = process.env.DATABASE_URL;
-
-// Bad - bypasses config validation
-const port = parseInt(process.env.PORT || "8000", 10);
-```
-
-**Why?**
-
-- Type safety and IntelliSense
-- Validation on startup (fails fast)
-- Centralized configuration management
-- Immutability (config can't be changed at runtime)
-- Documentation in one place
-
-**Steps to add new environment variables:**
-
-1. Add to appropriate schema in `src/shared/config/schemas/[namespace].config.schema.ts`
-2. Add validation decorators (`@IsString()`, `@IsNumber()`, `@IsUrl()`, etc.)
-3. Add to `loadConfig()` in `config.loader.ts`
-4. Update `.env.example`
-5. Update `CONFIG.md`
-
-See [Configuration](#configuration) section and `CONFIG.md` for details.
+- [Root CLAUDE.md - Service Architecture Patterns](../../CLAUDE.md#service-architecture-patterns)
+- [Root CLAUDE.md - Best Practices](../../CLAUDE.md#best-practices)
 
 ---
 
 ## Testing
 
-This service uses a **three-tier testing approach** with separate **unit tests**, **component tests**, and **integration tests** to achieve comprehensive coverage strategically.
+This service uses a **three-tier testing approach** with separate **unit tests**, **component tests**, and **integration tests**. See [root CLAUDE.md - Testing Implementation Patterns](../../CLAUDE.md#testing-implementation-patterns) for comprehensive testing patterns.
 
 ### Testing Philosophy
 
@@ -1052,20 +254,20 @@ Files covered by component tests or infrastructure:
 {
   "collectCoverageFrom": [
     "**/*.ts",
-    "!**/*.spec.ts", // Test files
-    "!**/*.dto.ts", // DTOs (validated in component tests)
-    "!**/*.entity.ts", // Domain types
-    "!**/*.port.ts", // Interfaces
-    "!**/*.error.ts", // Domain errors
-    "!**/main.ts", // Bootstrap
-    "!**/*.module.ts", // Module definitions
-    "!**/*.controller.ts", // Covered by component tests
-    "!**/*.filter.ts", // Covered by component tests
-    "!**/*.decorator.ts", // Covered by component tests
-    "!**/config/**", // Configuration
-    "!**/indicators/**", // Health indicators (component tests)
-    "!**/adapters/simple-*.ts", // Simple adapters
-    "!**/auth/application/auth.service.ts" // Simple wrapper
+    "!**/*.spec.ts",
+    "!**/*.dto.ts",
+    "!**/*.entity.ts",
+    "!**/*.port.ts",
+    "!**/*.error.ts",
+    "!**/main.ts",
+    "!**/*.module.ts",
+    "!**/*.controller.ts",
+    "!**/*.filter.ts",
+    "!**/*.decorator.ts",
+    "!**/config/**",
+    "!**/indicators/**",
+    "!**/adapters/simple-*.ts",
+    "!**/auth/application/auth.service.ts"
   ]
 }
 ```
@@ -1095,346 +297,7 @@ pnpm test:debug             # Debug mode
 pnpm test                   # Run all unit tests (default)
 ```
 
-### Writing Unit Tests
-
-Unit tests focus on **isolated business logic** with mocked dependencies.
-
-**Location**: Co-located next to source files (`*.spec.ts`)
-
-**Example: Testing a Service**
-
-```typescript
-import { ProductService } from "./product.service";
-import { createMockLogger } from "../../../test/helpers/mock-logger.factory";
-import {
-  createTestProductDto,
-  BOUNDARY_VALUES,
-} from "../../../test/fixtures/product.fixtures";
-import type { ProductRepository } from "../outbound/ports/product-repository.port";
-
-describe("ProductService", () => {
-  let service: ProductService;
-  let mockRepository: jest.Mocked<ProductRepository>;
-  let mockLogger: ReturnType<typeof createMockLogger>;
-
-  beforeEach(() => {
-    mockRepository = {
-      save: jest.fn(),
-      findById: jest.fn(),
-      findBySku: jest.fn(),
-      findAll: jest.fn(),
-      delete: jest.fn(),
-    };
-
-    mockLogger = createMockLogger();
-    service = new ProductService(mockRepository, mockLogger);
-  });
-
-  describe("createProduct (ECP & BVA)", () => {
-    it("should create product with valid data (ECP: Valid)", async () => {
-      // Arrange
-      const dto = createTestProductDto({ sku: "TEST-001" });
-      mockRepository.findBySku.mockResolvedValue(null); // No conflict
-      mockRepository.save.mockImplementation(async (p) => p);
-
-      // Act
-      const result = await service.createProduct(dto);
-
-      // Assert
-      expect(result.name).toBe(dto.name);
-      expect(mockRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: dto.name,
-          sku: dto.sku,
-          price: dto.price,
-        }),
-      );
-    });
-
-    it("should throw when SKU exists (ECP: Invalid - Duplicate)", async () => {
-      // Arrange
-      const dto = createTestProductDto({ sku: "EXISTING-SKU" });
-      const existing = createTestProduct({ sku: "EXISTING-SKU" });
-      mockRepository.findBySku.mockResolvedValue(existing);
-
-      // Act & Assert
-      await expect(service.createProduct(dto)).rejects.toThrow(
-        ProductAlreadyExistsError,
-      );
-    });
-
-    it("should accept minimum valid price (BVA: Lower boundary)", async () => {
-      // Arrange
-      const dto = createTestProductDto({
-        sku: "MIN-PRICE",
-        price: BOUNDARY_VALUES.price.valid.minimum, // 0.01
-      });
-      mockRepository.findBySku.mockResolvedValue(null);
-      mockRepository.save.mockImplementation(async (p) => p);
-
-      // Act
-      const result = await service.createProduct(dto);
-
-      // Assert
-      expect(result.price).toBe(0.01);
-    });
-  });
-});
-```
-
-**Example: Testing a Repository**
-
-```typescript
-describe("InMemoryProductRepository", () => {
-  let repository: InMemoryProductRepository;
-
-  beforeEach(() => {
-    repository = new InMemoryProductRepository(createMockLogger());
-  });
-
-  it("should save and retrieve product by ID", async () => {
-    // Arrange
-    const product = createTestProduct({ id: "test-123" });
-
-    // Act
-    await repository.save(product);
-    const result = await repository.findById("test-123");
-
-    // Assert
-    expect(result).toEqual(product);
-  });
-
-  it("should support pagination with limit (BVA)", async () => {
-    // Arrange - Create 10 products
-    for (let i = 0; i < 10; i++) {
-      await repository.save(createTestProduct({ id: `product-${i}` }));
-    }
-
-    // Act
-    const result = await repository.findAll({ limit: 5, offset: 0 });
-
-    // Assert
-    expect(result.products).toHaveLength(5);
-    expect(result.total).toBe(10);
-  });
-});
-```
-
-**Example: Testing Guards**
-
-```typescript
-describe("JwtAuthGuard", () => {
-  it("should allow access with valid Bearer token (ECP: Valid)", async () => {
-    // Arrange
-    const mockUser: User = {
-      id: "1",
-      email: "test@test.com",
-      name: "Test",
-      roles: ["user"],
-    };
-    mockReflector.getAllAndOverride.mockReturnValue(false); // Not public
-    mockAuthService.validateToken.mockResolvedValue(mockUser);
-
-    const request = mockContext.switchToHttp().getRequest();
-    request.headers.authorization = "Bearer valid-token-string";
-
-    // Act
-    const result = await guard.canActivate(mockContext);
-
-    // Assert
-    expect(result).toBe(true);
-    expect(mockAuthService.validateToken).toHaveBeenCalledWith(
-      "valid-token-string",
-    );
-    expect(request.user).toEqual(mockUser);
-  });
-
-  it("should throw when header missing (ECP: Invalid - Missing auth)", async () => {
-    // Arrange
-    mockReflector.getAllAndOverride.mockReturnValue(false);
-    // No authorization header
-
-    // Act & Assert
-    await expect(guard.canActivate(mockContext)).rejects.toThrow(
-      UnauthorizedException,
-    );
-  });
-});
-```
-
-### Writing Component Tests
-
-Component tests focus on **full HTTP request/response cycles** through the actual application.
-
-**Location**: `test/component/*.component.spec.ts`
-
-**Setup:**
-
-```typescript
-import { INestApplication } from "@nestjs/common";
-import request from "supertest";
-import { createTestApp } from "../helpers/test-app.factory";
-import { createAdminToken, createUserToken } from "../helpers/jwt.factory";
-import {
-  createTestProductDto,
-  BOUNDARY_VALUES,
-} from "../fixtures/product.fixtures";
-
-describe("Product API (Component)", () => {
-  let app: INestApplication;
-  let adminToken: string;
-  let userToken: string;
-
-  beforeAll(async () => {
-    app = await createTestApp();
-    adminToken = createAdminToken();
-    userToken = createUserToken();
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  // Tests here...
-});
-```
-
-**Example: Testing API Endpoints with ECP & BVA**
-
-```typescript
-describe("POST /products (ECP + BVA)", () => {
-  it("should create product as admin (ECP: Valid admin)", async () => {
-    // Arrange
-    const dto = createTestProductDto({ sku: `TEST-CREATE-${Date.now()}` });
-
-    // Act & Assert
-    const response = await request(app.getHttpServer())
-      .post("/products")
-      .set("Authorization", `Bearer ${adminToken}`)
-      .send(dto)
-      .expect(201);
-
-    expect(response.body).toMatchObject({
-      name: dto.name,
-      sku: dto.sku,
-      price: dto.price,
-    });
-    expect(response.body.id).toBeDefined();
-  });
-
-  it("should return 401 when no auth token provided (ECP: Invalid - No auth)", async () => {
-    // Arrange
-    const dto = createTestProductDto();
-
-    // Act & Assert
-    await request(app.getHttpServer()).post("/products").send(dto).expect(401);
-  });
-
-  it("should return 403 when user role tries to create (ECP: Invalid - Wrong role)", async () => {
-    // Arrange
-    const dto = createTestProductDto({ sku: `TEST-USER-${Date.now()}` });
-
-    // Act & Assert
-    await request(app.getHttpServer())
-      .post("/products")
-      .set("Authorization", `Bearer ${userToken}`)
-      .send(dto)
-      .expect(403);
-  });
-
-  it("should return 400 for negative price (BVA: Below minimum)", async () => {
-    // Arrange
-    const dto = createTestProductDto({
-      sku: `TEST-NEG-PRICE-${Date.now()}`,
-      price: BOUNDARY_VALUES.price.invalid.negative, // -1
-    });
-
-    // Act & Assert
-    const response = await request(app.getHttpServer())
-      .post("/products")
-      .set("Authorization", `Bearer ${adminToken}`)
-      .send(dto)
-      .expect(400);
-
-    // Validation errors come as an array
-    expect(Array.isArray(response.body.message)).toBe(true);
-    expect(
-      response.body.message.some((msg: string) => msg.includes("positive")),
-    ).toBe(true);
-  });
-
-  it("should accept minimum valid price (BVA: Lower boundary)", async () => {
-    // Arrange
-    const dto = createTestProductDto({
-      sku: `TEST-MIN-PRICE-${Date.now()}`,
-      price: BOUNDARY_VALUES.price.valid.minimum, // 0.01
-    });
-
-    // Act & Assert
-    const response = await request(app.getHttpServer())
-      .post("/products")
-      .set("Authorization", `Bearer ${adminToken}`)
-      .send(dto)
-      .expect(201);
-
-    expect(response.body.price).toBe(0.01);
-  });
-});
-```
-
-### Test Helpers & Fixtures
-
-**Mock Logger Factory** (`test/helpers/mock-logger.factory.ts`):
-
-```typescript
-import type { PinoLogger } from "nestjs-pino";
-
-export function createMockLogger(): jest.Mocked<PinoLogger> {
-  return {
-    setContext: jest.fn(),
-    trace: jest.fn(),
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    fatal: jest.fn(),
-    log: jest.fn(),
-    assign: jest.fn(),
-  } as unknown as jest.Mocked<PinoLogger>;
-}
-```
-
-**JWT Token Factory** (`test/helpers/jwt.factory.ts`):
-
-```typescript
-import * as jwt from "jsonwebtoken";
-
-export function createAdminToken(): string {
-  return jwt.sign(
-    {
-      sub: "admin-user-id",
-      email: "admin@example.com",
-      name: "Admin User",
-      roles: ["admin", "user"],
-    },
-    process.env.JWT_SECRET || "dev-secret-change-in-production",
-    { expiresIn: "1h" },
-  );
-}
-
-export function createUserToken(): string {
-  return jwt.sign(
-    {
-      sub: "regular-user-id",
-      email: "user@example.com",
-      name: "Regular User",
-      roles: ["user"],
-    },
-    process.env.JWT_SECRET || "dev-secret-change-in-production",
-    { expiresIn: "1h" },
-  );
-}
-```
+### Service-Specific Test Examples
 
 **Test Data Fixtures** (`test/fixtures/product.fixtures.ts`):
 
@@ -1475,33 +338,168 @@ export function createTestProductDto(
   dto.stock = overrides?.stock ?? 50;
   return dto;
 }
+
+export function createTestProduct(overrides?: Partial<Product>): Product {
+  return {
+    id: overrides?.id ?? randomUUID(),
+    name: overrides?.name ?? "Test Product",
+    description: overrides?.description ?? "Test product description",
+    sku: overrides?.sku ?? `TEST-SKU-${Date.now()}`,
+    price: overrides?.price ?? 99.99,
+    stock: overrides?.stock ?? 10,
+    createdAt: overrides?.createdAt ?? new Date(),
+    updatedAt: overrides?.updatedAt ?? new Date(),
+  };
+}
 ```
 
-### ECP & BVA in Practice
+**Writing Unit Tests**:
 
-**Equivalence Class Partitioning (ECP):**
+```typescript
+import { ProductService } from "./product.service";
+import { createMockLogger } from "../../../test/helpers/mock-logger.factory";
+import {
+  createTestProductDto,
+  createTestProduct,
+  BOUNDARY_VALUES,
+} from "../../../test/fixtures/product.fixtures";
+import type { ProductRepository } from "../outbound/ports/product-repository.port";
 
-Group inputs into classes that should behave the same way:
+describe("ProductService", () => {
+  let service: ProductService;
+  let mockRepository: jest.Mocked<ProductRepository>;
+  let mockLogger: ReturnType<typeof createMockLogger>;
 
-- **Valid Classes**: Admin with token, User with token
-- **Invalid Classes**: No token, Invalid token, Wrong role, Malformed data
+  beforeEach(() => {
+    mockRepository = {
+      save: jest.fn(),
+      findById: jest.fn(),
+      findBySku: jest.fn(),
+      findAll: jest.fn(),
+      delete: jest.fn(),
+    };
 
-**Boundary Value Analysis (BVA):**
+    mockLogger = createMockLogger();
+    service = new ProductService(mockRepository, mockLogger);
+  });
 
-Test at boundaries where behavior changes:
+  describe("createProduct (ECP & BVA)", () => {
+    it("should create product with valid data (ECP: Valid)", async () => {
+      const dto = createTestProductDto({ sku: "TEST-001" });
+      mockRepository.findBySku.mockResolvedValue(null);
+      mockRepository.save.mockImplementation(async (p) => p);
 
-- **Price**: 0 (invalid), 0.01 (minimum valid), negative (invalid)
-- **Stock**: -1 (invalid), 0 (valid boundary), 1 (normal)
-- **Pagination**: limit=0, limit=1, offset at total count
-- **String Length**: maxLength-1, maxLength, maxLength+1
+      const result = await service.createProduct(dto);
 
-### Writing Integration Tests
+      expect(result.name).toBe(dto.name);
+      expect(mockRepository.save).toHaveBeenCalled();
+    });
 
-Integration tests verify the service integrates correctly with **real external systems** (PostgreSQL database). Uses **testcontainers** to manage ephemeral databases.
+    it("should accept minimum valid price (BVA: Lower boundary)", async () => {
+      const dto = createTestProductDto({
+        sku: "MIN-PRICE",
+        price: BOUNDARY_VALUES.price.valid.minimum, // 0.01
+      });
+      mockRepository.findBySku.mockResolvedValue(null);
+      mockRepository.save.mockImplementation(async (p) => p);
 
-**Location**: `test/integration/*.integration.spec.ts`
+      const result = await service.createProduct(dto);
 
-**Setup Pattern**:
+      expect(result.price).toBe(0.01);
+    });
+  });
+});
+```
+
+**Writing Component Tests**:
+
+```typescript
+import { INestApplication } from "@nestjs/common";
+import request from "supertest";
+import { createTestApp } from "../helpers/test-app.factory";
+import { createAdminToken, createUserToken } from "../helpers/jwt.factory";
+import {
+  createTestProductDto,
+  BOUNDARY_VALUES,
+} from "../fixtures/product.fixtures";
+
+describe("Product API (Component)", () => {
+  let app: INestApplication;
+  let adminToken: string;
+  let userToken: string;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+    adminToken = createAdminToken();
+    userToken = createUserToken();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe("POST /products (ECP + BVA)", () => {
+    it("should create product as admin (ECP: Valid admin)", async () => {
+      const dto = createTestProductDto({ sku: `TEST-CREATE-${Date.now()}` });
+
+      const response = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(dto)
+        .expect(201);
+
+      expect(response.body).toMatchObject({
+        name: dto.name,
+        sku: dto.sku,
+        price: dto.price,
+      });
+    });
+
+    it("should return 403 when user role tries to create (ECP: Invalid - Wrong role)", async () => {
+      const dto = createTestProductDto({ sku: `TEST-USER-${Date.now()}` });
+
+      await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${userToken}`)
+        .send(dto)
+        .expect(403);
+    });
+
+    it("should return 400 for negative price (BVA: Below minimum)", async () => {
+      const dto = createTestProductDto({
+        sku: `TEST-NEG-PRICE-${Date.now()}`,
+        price: BOUNDARY_VALUES.price.invalid.negative, // -1
+      });
+
+      const response = await request(app.getHttpServer())
+        .post("/products")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(dto)
+        .expect(400);
+
+      expect(Array.isArray(response.body.message)).toBe(true);
+    });
+  });
+});
+```
+
+**Writing Integration Tests**:
+
+Integration tests verify the service integrates correctly with **real external systems** (PostgreSQL database). Uses **testcontainers**.
+
+**Decision Table for Integration Tests**:
+
+Use decision table methodology to identify which scenarios need integration tests:
+
+| Scenario            | Validates                          | Why Integration Test Needed                 |
+| ------------------- | ---------------------------------- | ------------------------------------------- |
+| Duplicate SKU       | PostgreSQL unique constraint       | In-memory repo can't test actual constraint |
+| Concurrent creation | Race condition handling            | Tests actual database locking               |
+| Soft delete         | isActive filtering in queries      | Verifies database indexes work correctly    |
+| Decimal precision   | Prisma Decimal → number conversion | Tests actual type conversion                |
+| Pagination          | Query performance with real data   | Tests SQL OFFSET/LIMIT efficiency           |
+
+This table shows why we have only 8 integration tests - each one validates something that **cannot be tested** with unit or component tests.
 
 ```typescript
 import { INestApplication } from "@nestjs/common";
@@ -1522,14 +520,9 @@ describe("Product API (Integration)", () => {
   let databaseUrl: string;
 
   beforeAll(async () => {
-    // Start PostgreSQL testcontainer
     container = await startPostgreSqlContainer();
     databaseUrl = container.getConnectionString();
-
-    // Run Prisma migrations
     await runMigrations(databaseUrl);
-
-    // Create app with real database
     app = await createIntegrationTestApp({ databaseUrl });
     prisma = app.get(PrismaService);
   });
@@ -1540,146 +533,33 @@ describe("Product API (Integration)", () => {
   });
 
   beforeEach(async () => {
-    // Clean database for test isolation
     await cleanDatabase(databaseUrl);
   });
 
-  // Tests here...
-});
-```
+  it("should enforce unique SKU constraint at database level", async () => {
+    const dto = createTestProductDto({ sku: "UNIQUE-SKU-001" });
 
-**Example: Testing Database Constraints**:
+    // Create first product
+    await request(app.getHttpServer())
+      .post("/products")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send(dto)
+      .expect(201);
 
-```typescript
-it("should enforce unique SKU constraint at database level", async () => {
-  // Arrange
-  const dto = createTestProductDto({ sku: "UNIQUE-SKU-001" });
-
-  // Act - Create first product
-  await request(app.getHttpServer())
-    .post("/products")
-    .set("Authorization", `Bearer ${adminToken}`)
-    .send(dto)
-    .expect(201);
-
-  // Act - Try to create second product with same SKU
-  await request(app.getHttpServer())
-    .post("/products")
-    .set("Authorization", `Bearer ${adminToken}`)
-    .send(dto)
-    .expect(409); // Conflict due to database constraint
-});
-```
-
-**Example: Testing Soft Delete**:
-
-```typescript
-it("should soft delete product and exclude from queries", async () => {
-  // Arrange - Create product
-  const createResponse = await request(app.getHttpServer())
-    .post("/products")
-    .set("Authorization", `Bearer ${adminToken}`)
-    .send(dto)
-    .expect(201);
-
-  // Act - Delete product
-  await request(app.getHttpServer())
-    .delete(`/products/${createResponse.body.id}`)
-    .set("Authorization", `Bearer ${adminToken}`)
-    .expect(204);
-
-  // Assert - Verify isActive=false in database
-  const dbProduct = await prisma.product.findUnique({
-    where: { id: createResponse.body.id },
+    // Try to create second product with same SKU
+    await request(app.getHttpServer())
+      .post("/products")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send(dto)
+      .expect(409); // Conflict due to database constraint
   });
-  expect(dbProduct.isActive).toBe(false);
-
-  // Assert - Verify excluded from API queries
-  await request(app.getHttpServer())
-    .get(`/products/${createResponse.body.id}`)
-    .set("Authorization", `Bearer ${userToken}`)
-    .expect(404);
 });
 ```
 
-**Decision Table for Integration Tests**:
+**For comprehensive testing patterns**, see:
 
-| Scenario            | Validates                          | Why Integration Test Needed                 |
-| ------------------- | ---------------------------------- | ------------------------------------------- |
-| Duplicate SKU       | PostgreSQL unique constraint       | In-memory repo can't test actual constraint |
-| Concurrent creation | Race condition handling            | Tests actual database locking               |
-| Soft delete         | isActive filtering in queries      | Verifies database indexes work correctly    |
-| Decimal precision   | Prisma Decimal → number conversion | Tests actual type conversion                |
-| Pagination          | Query performance with real data   | Tests SQL OFFSET/LIMIT efficiency           |
-
-**Requirements**:
-
-- Docker must be running locally
-- Tests automatically download postgres:16-alpine image
-- Each test run gets fresh database container
-- Slower than unit/component tests (60s timeout)
-
-### Coverage Reports
-
-**View Coverage:**
-
-```bash
-# Unit test coverage (100%)
-pnpm test:cov:unit
-open coverage/index.html
-
-# Component test coverage (93.91%)
-pnpm test:component:cov
-open coverage-component/index.html
-
-# Integration test coverage (database-specific)
-pnpm test:integration:cov
-open coverage-integration/index.html
-```
-
-**Coverage Thresholds:**
-
-Unit tests enforce minimum thresholds:
-
-```json
-{
-  "coverageThreshold": {
-    "global": {
-      "lines": 80,
-      "branches": 75,
-      "functions": 80,
-      "statements": 80
-    }
-  }
-}
-```
-
-### Best Practices
-
-**✅ DO:**
-
-- Use ECP to identify test classes (valid/invalid scenarios)
-- Use BVA to test boundary conditions
-- Co-locate unit tests with source files
-- Put component tests in `test/component/`
-- Put integration tests in `test/integration/`
-- Use test fixtures for reusable test data
-- Test error paths and edge cases
-- Mock external dependencies in unit tests
-- Use real HTTP requests in component tests
-- Use real database in integration tests (testcontainers)
-- Keep integration tests minimal (decision table approach)
-- Name tests clearly: `should [action] when [condition] (ECP/BVA: [category])`
-
-**❌ DON'T:**
-
-- Write redundant tests that cover the same equivalence class
-- Test implementation details (private methods)
-- Mix unit and component test concerns
-- Skip error case testing
-- Hardcode test data (use fixtures)
-- Test framework code (controllers in unit tests)
-- Create tests just to increase coverage numbers
+- [Root CLAUDE.md - Testing Implementation Patterns](../../CLAUDE.md#testing-implementation-patterns)
+- [Testing Checklist](../../docs/templates/service-template/TESTING_CHECKLIST.md)
 
 ---
 
@@ -1757,6 +637,8 @@ async create(@Body() dto: CreateProductDto) {
 
 Configuration uses `@nestjs/config` with class-validator for type-safe validation organized into namespaces. See **[CONFIG.md](./CONFIG.md)** for comprehensive documentation.
 
+**For configuration patterns and best practices**, see [root CLAUDE.md - Configuration Pattern](../../CLAUDE.md#configuration-pattern).
+
 ### Quick Reference
 
 **Configuration Namespaces**:
@@ -1791,32 +673,7 @@ export class SomeService {
 }
 ```
 
-### Adding New Config
-
-**IMPORTANT**: All environment variables MUST be validated through config schemas. Never read `process.env` directly in services.
-
-**Steps**:
-
-1. Add property to schema in `src/shared/config/schemas/[namespace].config.schema.ts`
-2. Add validation decorators (`@IsString()`, `@IsNumber()`, etc.)
-3. Add to `loadConfig()` in `config.loader.ts`
-4. Update `.env.example`
-5. Update `CONFIG.md`
-
-**Example**: Adding a database URL to app namespace:
-
-```typescript
-// src/shared/config/schemas/app.config.schema.ts
-export class AppConfigSchema {
-  // ... existing properties ...
-
-  @IsUrl({ require_tld: false })
-  DATABASE_URL!: string;
-}
-
-// Then use in services:
-const dbUrl = this.config.app.DATABASE_URL; // ✅ Validated & type-safe
-```
+**Important**: Never read `process.env` directly. Always use the config service for validated, type-safe configuration.
 
 For complete documentation including validation rules, environment file priority, production deployment, and troubleshooting, see **[CONFIG.md](./CONFIG.md)**.
 
@@ -1846,6 +703,50 @@ pnpm style:format
 
 ---
 
+## Development Workflow
+
+### Git Worktrees
+
+This monorepo supports git worktrees for working on multiple branches simultaneously with automatic port allocation. See [root CLAUDE.md - Worktree Management](../../CLAUDE.md#worktree-management) for comprehensive documentation.
+
+**Quick Reference**:
+
+```bash
+# Create worktree for feature branch
+./scripts/worktree/create-worktree.sh feat/my-feature
+
+# Switch to worktree (automatically uses port 8001+)
+cd ../monorepo-project-template.worktree.feat-my-feature/apps/example-service
+pnpm dev
+
+# Close worktree when done
+cd /path/to/monorepo-project-template
+./scripts/worktree/close-worktree.sh feat-my-feature
+```
+
+This service uses ports 8000+ and requires `.env.local` and `requests/http-client.env.json` to be copied per the manifest. Port allocation is handled automatically.
+
+### Logging
+
+This service uses Pino for structured logging. See [root CLAUDE.md - Logging Strategy](../../CLAUDE.md#logging-strategy) for comprehensive patterns.
+
+**Quick Example**:
+
+```typescript
+@Injectable()
+export class ProductService {
+  constructor(private readonly logger: PinoLogger) {
+    this.logger.setContext(ProductService.name); // Always set context
+  }
+
+  async doSomething(id: string) {
+    this.logger.info({ id }, "Doing something"); // Structured logging
+  }
+}
+```
+
+---
+
 ## Summary
 
 This service provides:
@@ -1858,5 +759,12 @@ This service provides:
 ✅ **Type-safe** domain models and DTOs
 ✅ **Exception handling** with domain-specific filters
 ✅ **Production-ready** patterns and best practices
+✅ **Comprehensive testing** (unit, component, integration)
 
-Follow this guide when extending the service to maintain consistency and code quality across all modules.
+**For architectural patterns, best practices, and monorepo-level documentation**, see:
+
+- [Root CLAUDE.md](../../CLAUDE.md) - Comprehensive architectural patterns and testing strategies
+- [Module Creation Guide](../../docs/templates/service-template/MODULE_TEMPLATE.md) - Step-by-step module creation
+- [Testing Checklist](../../docs/templates/service-template/TESTING_CHECKLIST.md) - Testing setup guide
+
+Follow this guide and the linked documentation to maintain consistency and code quality across all modules.

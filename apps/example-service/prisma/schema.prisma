@@ -44,3 +44,22 @@ model Product {
   @@index([isActive])
   @@map("products")
 }
+
+// Analytics Events - Business-level event tracking
+model AnalyticsEvent {
+  id          String   @id @default(uuid())
+  eventType   String   @map("event_type") @db.VarChar(100)
+  userId      String?  @map("user_id") @db.VarChar(255)
+  timestamp   DateTime @default(now())
+  metadata    Json?    @db.JsonB
+  traceId     String?  @map("trace_id") @db.VarChar(32)
+
+  @@index([eventType])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([eventType, timestamp])
+  @@index([userId, timestamp])
+  @@index([traceId])
+
+  @@map("analytics_events")
+}

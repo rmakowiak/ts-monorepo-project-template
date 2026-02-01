@@ -5,6 +5,7 @@ import { AppModule } from "~/app.module";
 import { AppConfigService } from "~/shared/config/app-config.service";
 import { createSecurityMiddleware } from "~/shared/security/security.middleware";
 import { InMemoryProductRepository } from "~/product/outbound/adapters/in-memory-product.repository";
+import { InMemoryAnalyticsRepository } from "~/analytics/outbound/adapters/in-memory-analytics.repository";
 import { PrismaService } from "~/database/prisma.service";
 import { MockPrismaService } from "./mock-prisma.service";
 
@@ -60,7 +61,9 @@ export async function createTestApp(
   if (useInMemoryRepositories) {
     moduleBuilder = moduleBuilder
       .overrideProvider("ProductRepository")
-      .useClass(InMemoryProductRepository);
+      .useClass(InMemoryProductRepository)
+      .overrideProvider("AnalyticsRepository")
+      .useClass(InMemoryAnalyticsRepository);
   }
 
   const moduleFixture: TestingModule = await moduleBuilder.compile();

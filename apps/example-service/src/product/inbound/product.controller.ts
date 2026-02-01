@@ -57,9 +57,9 @@ export class ProductController {
   @ApiResponse({ status: 409, description: "Product with SKU already exists" })
   async create(
     @Body() dto: CreateProductDto,
-    @CurrentUser() _user: User,
+    @CurrentUser() user: User,
   ): Promise<ProductResponseDto> {
-    const product = await this.productService.createProduct(dto);
+    const product = await this.productService.createProduct(dto, user.id);
     return this.toDto(product);
   }
 
@@ -100,8 +100,11 @@ export class ProductController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Product not found" })
-  async findOne(@Param("id") id: string): Promise<ProductResponseDto> {
-    const product = await this.productService.getProductById(id);
+  async findOne(
+    @Param("id") id: string,
+    @CurrentUser() user: User,
+  ): Promise<ProductResponseDto> {
+    const product = await this.productService.getProductById(id, user.id);
     return this.toDto(product);
   }
 
@@ -121,9 +124,9 @@ export class ProductController {
   async update(
     @Param("id") id: string,
     @Body() dto: UpdateProductDto,
-    @CurrentUser() _user: User,
+    @CurrentUser() user: User,
   ): Promise<ProductResponseDto> {
-    const product = await this.productService.updateProduct(id, dto);
+    const product = await this.productService.updateProduct(id, dto, user.id);
     return this.toDto(product);
   }
 
@@ -138,9 +141,9 @@ export class ProductController {
   @ApiResponse({ status: 404, description: "Product not found" })
   async remove(
     @Param("id") id: string,
-    @CurrentUser() _user: User,
+    @CurrentUser() user: User,
   ): Promise<void> {
-    await this.productService.deleteProduct(id);
+    await this.productService.deleteProduct(id, user.id);
   }
 
   private toDto(product: Product): ProductResponseDto {

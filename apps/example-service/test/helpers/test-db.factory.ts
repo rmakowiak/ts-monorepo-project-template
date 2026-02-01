@@ -67,6 +67,7 @@ export async function cleanDatabase(databaseUrl: string): Promise<void> {
 
   try {
     // Delete in correct order (respecting foreign keys)
+    await prisma.analyticsEvent.deleteMany({});
     await prisma.product.deleteMany({});
     await prisma.category.deleteMany({});
   } finally {

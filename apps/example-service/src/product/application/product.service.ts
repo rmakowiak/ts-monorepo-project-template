@@ -9,6 +9,8 @@ import {
 } from "../domain/product.error";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
+import { AnalyticsService } from "~/analytics/application/analytics.service";
+import { EventType } from "~/analytics/domain/event-type.enum";
 
 @Injectable()
 export class ProductService {
@@ -16,11 +18,15 @@ export class ProductService {
     @Inject("ProductRepository")
     private readonly repository: ProductRepository,
     private readonly logger: PinoLogger,
+    private readonly analyticsService: AnalyticsService,
   ) {
     this.logger.setContext(ProductService.name);
   }
 
-  async createProduct(dto: CreateProductDto): Promise<Product> {
+  async createProduct(
+    dto: CreateProductDto,
+    userId?: string,
+  ): Promise<Product> {
     this.logger.info({ sku: dto.sku, name: dto.name }, "Creating new product");
 
     // Check if SKU already exists
@@ -49,10 +55,29 @@ export class ProductService {
       "Product created successfully",
     );
 
+    // Track analytics event (non-blocking)
+    try {
+      await this.analyticsService.track(EventType.PRODUCT_CREATED, {
+        userId,
+        metadata: {
+          productId: saved.id,
+          sku: saved.sku,
+          name: saved.name,
+          price: saved.price,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        { error, eventType: EventType.PRODUCT_CREATED },
+        "Failed to track analytics event",
+      );
+      // Continue - don't fail the operation
+    }
+
     return saved;
   }
 
-  async getProductById(id: ProductId): Promise<Product> {
+  async getProductById(id: ProductId, userId?: string): Promise<Product> {
     this.logger.debug({ productId: id }, "Fetching product by ID");
 
     const product = await this.repository.findById(id);
@@ -66,6 +91,24 @@ export class ProductService {
       { productId: id, name: product.name },
       "Product retrieved",
     );
+
+    // Track analytics event (non-blocking)
+    try {
+      await this.analyticsService.track(EventType.PRODUCT_VIEWED, {
+        userId,
+        metadata: {
+          productId: product.id,
+          sku: product.sku,
+          name: product.name,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        { error, eventType: EventType.PRODUCT_VIEWED },
+        "Failed to track analytics event",
+      );
+      // Continue - don't fail the operation
+    }
 
     return product;
   }
@@ -91,7 +134,11 @@ export class ProductService {
     return result;
   }
 
-  async updateProduct(id: ProductId, dto: UpdateProductDto): Promise<Product> {
+  async updateProduct(
+    id: ProductId,
+    dto: UpdateProductDto,
+    userId?: string,
+  ): Promise<Product> {
     this.logger.info(
       { productId: id, updates: Object.keys(dto) },
       "Updating product",
@@ -122,10 +169,29 @@ export class ProductService {
       "Product updated successfully",
     );
 
+    // Track analytics event (non-blocking)
+    try {
+      await this.analyticsService.track(EventType.PRODUCT_UPDATED, {
+        userId,
+        metadata: {
+          productId: saved.id,
+          sku: saved.sku,
+          name: saved.name,
+          updatedFields: Object.keys(updates),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        { error, eventType: EventType.PRODUCT_UPDATED },
+        "Failed to track analytics event",
+      );
+      // Continue - don't fail the operation
+    }
+
     return saved;
   }
 
-  async deleteProduct(id: ProductId): Promise<void> {
+  async deleteProduct(id: ProductId, userId?: string): Promise<void> {
     this.logger.info({ productId: id }, "Deleting product");
 
     const existing = await this.repository.findById(id);
@@ -141,5 +207,23 @@ export class ProductService {
       { productId: id, sku: existing.sku },
       "Product deleted successfully",
     );
+
+    // Track analytics event (non-blocking)
+    try {
+      await this.analyticsService.track(EventType.PRODUCT_DELETED, {
+        userId,
+        metadata: {
+          productId: existing.id,
+          sku: existing.sku,
+          name: existing.name,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        { error, eventType: EventType.PRODUCT_DELETED },
+        "Failed to track analytics event",
+      );
+      // Continue - don't fail the operation
+    }
   }
 }

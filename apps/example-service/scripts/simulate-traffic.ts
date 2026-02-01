@@ -72,56 +72,48 @@ const config = {
 const PRODUCT_TEMPLATES = [
   {
     name: "Wireless Mouse",
-    category: "Electronics",
     price: 29.99,
     stock: 100,
     description: "Ergonomic wireless mouse with 2.4GHz connection",
   },
   {
     name: "Mechanical Keyboard",
-    category: "Electronics",
     price: 89.99,
     stock: 50,
     description: "RGB mechanical gaming keyboard with blue switches",
   },
   {
     name: "USB-C Cable",
-    category: "Accessories",
     price: 12.99,
     stock: 200,
     description: "6ft braided USB-C to USB-C cable",
   },
   {
     name: "Laptop Stand",
-    category: "Accessories",
     price: 39.99,
     stock: 75,
     description: "Aluminum adjustable laptop stand",
   },
   {
-    name: "Webcam",
-    category: "Electronics",
+    name: "Webcam HD 1080p",
     price: 79.99,
     stock: 30,
     description: "1080p HD webcam with auto-focus",
   },
   {
-    name: "Desk Lamp",
-    category: "Office",
+    name: "LED Desk Lamp",
     price: 34.99,
     stock: 60,
     description: "LED desk lamp with adjustable brightness",
   },
   {
     name: "Phone Holder",
-    category: "Accessories",
     price: 15.99,
     stock: 150,
     description: "Universal phone holder for desk",
   },
   {
     name: "Bluetooth Speaker",
-    category: "Electronics",
     price: 49.99,
     stock: 80,
     description: "Portable waterproof Bluetooth speaker",
@@ -240,12 +232,12 @@ async function getRootEndpoint() {
 }
 
 async function listProducts() {
-  const response = await makeRequest("/products", "GET");
+  const response = await makeRequest("/products", "GET", undefined, true);
   return response;
 }
 
 async function getProduct(id: string) {
-  await makeRequest(`/products/${id}`, "GET");
+  await makeRequest(`/products/${id}`, "GET", undefined, true);
 }
 
 async function getRandomProduct() {
@@ -257,13 +249,23 @@ async function getRandomProduct() {
 
 async function getNonExistentProduct() {
   const fakeId = randomUUID();
-  await makeRequest(`/products/${fakeId}`, "GET");
+  await makeRequest(`/products/${fakeId}`, "GET", undefined, true);
 }
 
 async function createProduct() {
   const template =
     PRODUCT_TEMPLATES[Math.floor(Math.random() * PRODUCT_TEMPLATES.length)];
-  const sku = `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  // Generate meaningful SKU based on product name prefix and add high entropy
+  const namePrefix = template.name
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .substring(0, 4);
+  const timestamp = Date.now();
+  const randomSuffix = Math.floor(Math.random() * 100000)
+    .toString()
+    .padStart(5, "0");
+  const sku = `${namePrefix}-${timestamp}-${randomSuffix}`;
 
   const product = {
     ...template,
@@ -316,7 +318,17 @@ async function deleteProduct() {
 async function createProductWithoutAuth() {
   const template =
     PRODUCT_TEMPLATES[Math.floor(Math.random() * PRODUCT_TEMPLATES.length)];
-  const sku = `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  // Generate meaningful SKU based on product name prefix and add high entropy
+  const namePrefix = template.name
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .substring(0, 4);
+  const timestamp = Date.now();
+  const randomSuffix = Math.floor(Math.random() * 100000)
+    .toString()
+    .padStart(5, "0");
+  const sku = `${namePrefix}-${timestamp}-${randomSuffix}`;
 
   await makeRequest("/products", "POST", { ...template, sku }, false);
 }

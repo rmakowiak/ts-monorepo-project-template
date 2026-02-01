@@ -11,11 +11,13 @@ import {
   ProductAlreadyExistsError,
 } from "../domain/product.error";
 import type { ProductRepository } from "../outbound/ports/product-repository.port";
+import type { AnalyticsService } from "~/analytics/application/analytics.service";
 
 describe("ProductService", () => {
   let service: ProductService;
   let mockRepository: jest.Mocked<ProductRepository>;
   let mockLogger: ReturnType<typeof createMockLogger>;
+  let mockAnalyticsService: jest.Mocked<AnalyticsService>;
 
   beforeEach(() => {
     mockRepository = {
@@ -26,7 +28,25 @@ describe("ProductService", () => {
       delete: jest.fn(),
     };
     mockLogger = createMockLogger();
-    service = new ProductService(mockRepository, mockLogger);
+    mockAnalyticsService = {
+      track: jest.fn().mockResolvedValue({
+        id: "analytics-event-id",
+        eventType: "product_created",
+        userId: null,
+        timestamp: new Date(),
+        metadata: null,
+        traceId: null,
+      }),
+      findById: jest.fn(),
+      findByEventType: jest.fn(),
+      findByUserId: jest.fn(),
+      findByTraceId: jest.fn(),
+    } as unknown as jest.Mocked<AnalyticsService>;
+    service = new ProductService(
+      mockRepository,
+      mockLogger,
+      mockAnalyticsService,
+    );
   });
 
   describe("createProduct", () => {

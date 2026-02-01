@@ -231,9 +231,14 @@ export class ProductService {
   async createProduct(dto: CreateProductDto): Promise<Product> {
     this.logger.info({ sku: dto.sku }, "Creating product");
 
+    // Map DTO to domain entity (explicit mapping for clarity)
     const product: Product = {
       id: randomUUID(),
-      ...dto,
+      name: dto.name,
+      description: dto.description,
+      sku: dto.sku,
+      price: dto.price,
+      stock: dto.stock,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -815,20 +820,16 @@ export class ProductService {
   async createProduct(dto: CreateProductDto): Promise<Product> {
     this.logger.info({ sku: dto.sku, name: dto.name }, "Creating product");
 
-    try {
-      const product = await this.repository.save(product);
-      this.logger.info(
-        { productId: product.id },
-        "Product created successfully",
-      );
-      return product;
-    } catch (error) {
-      this.logger.error({ error, sku: dto.sku }, "Failed to create product");
-      throw error;
-    }
+    // Domain errors are thrown directly (no try-catch needed)
+    const product = await this.repository.save(product);
+
+    this.logger.info({ productId: product.id }, "Product created successfully");
+    return product;
   }
 }
 ```
+
+**Note on error handling**: Use try-catch only for infrastructure errors (database connection failures, network timeouts) that need logging before re-throwing. Domain errors (business rule violations) are thrown directly and caught by exception filters.
 
 ### Logging Best Practices
 

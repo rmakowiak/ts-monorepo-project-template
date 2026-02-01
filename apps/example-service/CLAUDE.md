@@ -191,7 +191,7 @@ This service uses a **three-tier testing approach** with separate **unit tests**
 - ✅ **Meaningful over exhaustive**: Focus on valuable tests, not test count
 - ✅ **ECP & BVA**: Use Equivalence Class Partitioning and Boundary Value Analysis for strategic coverage
 - ✅ **Separation of concerns**: Unit tests for logic, component tests for HTTP flow, integration tests for database
-- ✅ **High coverage with focus**: 100% unit coverage on business logic, 93%+ component coverage on API layer
+- ✅ **High coverage with focus**: Near 100% unit coverage on business logic, 90%+ component coverage on API layer
 - ✅ **Minimal integration tests**: Decision table approach for critical database scenarios only
 
 ### Test Structure
@@ -224,13 +224,14 @@ src/
 
 **Three Separate Test Suites:**
 
-1. **Unit Test Coverage: 100%**
-   - Business logic (Services)
-   - Data access (Repositories)
-   - Authorization (Guards)
+1. **Unit Test Coverage: High coverage of business logic**
+   - Business logic (Services): Near 100%
+   - Data access (Repositories): Near 100%
+   - Authorization (Guards): Near 100%
+   - Overall unit test coverage: ~58% (many files are tested via component tests instead)
    - Pure logic without HTTP concerns
 
-2. **Component Test Coverage: 93.91%**
+2. **Component Test Coverage: 90%+**
    - Full HTTP request/response cycle
    - Controllers
    - Exception filters
@@ -272,22 +273,34 @@ Files covered by component tests or infrastructure:
 }
 ```
 
+**Coverage Exclusion Rationale:**
+
+Files excluded from unit test coverage fall into these categories:
+
+- **Data structures with no logic**: DTOs, entities, ports (interfaces), domain errors
+- **Infrastructure tested via component tests**: Controllers, filters, decorators, modules
+- **Configuration validated at runtime**: Config schemas and loaders
+- **Simple adapters**: Thin wrappers with no business logic
+- **Health indicators**: Tested via component tests with real health checks
+
+This testing strategy achieves comprehensive coverage through the right test type for each concern, rather than forcing everything through unit tests.
+
 ### Test Commands
 
 ```bash
-# Unit Tests (72 tests - 100% coverage)
+# Unit Tests (comprehensive coverage of business logic)
 pnpm test:unit              # Run unit tests
 pnpm test:cov:unit          # With coverage report
 
-# Component Tests (31 tests - 93.91% coverage)
+# Component Tests (HTTP layer integration tests)
 pnpm test:component         # Run component tests
 pnpm test:component:cov     # With coverage report
 
-# Integration Tests (8 tests - database integration)
+# Integration Tests (database and external system integration)
 pnpm test:integration       # Run integration tests (requires Docker)
 pnpm test:integration:cov   # With coverage report
 
-# All Tests (111 tests total)
+# All Tests
 pnpm test:all               # Run unit + component tests
 pnpm test:ci                # Run all tests including integration
 

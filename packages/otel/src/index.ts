@@ -37,6 +37,7 @@
 
 export { initializeOtel } from "./config";
 export { createPinoOtelMixin } from "./pino-instrumentation";
+export { registerPrismaInstrumentation } from "./prisma-instrumentation";
 export {
   addSpanAttributes,
   addSpanEvent,

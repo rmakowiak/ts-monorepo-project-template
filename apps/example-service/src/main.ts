@@ -1,10 +1,13 @@
+// Load environment variables FIRST (before any imports that need them)
+import { config } from "dotenv";
+config({ path: [".env.local", ".env.production", ".env"] });
+
 import { NestFactory } from "@nestjs/core";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { Logger } from "nestjs-pino";
-import { initializeOtel } from "@monorepo/otel";
+import { initializeOtel, registerPrismaInstrumentation } from "@monorepo/otel";
 import { json, urlencoded } from "express";
-import { AppModule } from "./app.module";
 import { AppConfigService } from "./shared/config/app-config.service";
 import { createSecurityMiddleware } from "./shared/security/security.middleware";
 
@@ -12,10 +15,16 @@ async function bootstrap() {
   let app: INestApplication;
 
   try {
-    // Initialize OpenTelemetry BEFORE creating the NestJS app
-    // This ensures all modules and HTTP requests are auto-instrumented
-    // Config validation happens internally within the OTel package
+    // CRITICAL: Register Prisma instrumentation FIRST
+    // Must happen before AppModule is imported to ensure tracing helper is available
+    registerPrismaInstrumentation();
+
+    // Initialize OpenTelemetry SDK
     initializeOtel();
+
+    // Import AppModule dynamically AFTER instrumentation is registered
+    // This ensures PrismaClient is not instantiated until tracing is ready
+    const { AppModule } = await import("./app.module");
 
     app = await NestFactory.create(AppModule, { bufferLogs: true });
 

@@ -83,6 +83,7 @@ class OtelSDKManager {
     const metricReader = this.createMetricReader();
 
     // Create instrumentations
+    // Note: Prisma instrumentation is registered separately before SDK initialization
     const instrumentations = getNodeAutoInstrumentations({
       "@opentelemetry/instrumentation-fs": {
         enabled: false, // File system instrumentation is too noisy
@@ -107,7 +108,7 @@ class OtelSDKManager {
       },
     });
 
-    // Initialize SDK
+    // Initialize and start SDK
     this.sdk = new NodeSDK({
       resource,
       traceExporter,
